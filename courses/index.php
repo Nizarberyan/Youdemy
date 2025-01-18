@@ -100,28 +100,28 @@ require_once '../includes/header.php';
                                         </a>
                                     </h3>
                                     <p class="mt-1 text-sm text-gray-500">
-                                        <?= htmlspecialchars(truncateText($course['description'], 100)) ?>
+                                        <?= htmlspecialchars(substr($course['description'], 0, 100)) . (strlen($course['description']) > 100 ? '...' : '') ?>
                                     </p>
                                     <div class="mt-4 flex items-center justify-between">
                                         <div class="flex items-center">
                                             <img class="h-8 w-8 rounded-full object-cover"
-                                                src="../<?= $course['teacher_image'] ?? 'assets/images/default-avatar.png' ?>"
-                                                alt="<?= htmlspecialchars($course['teacher_name']) ?>">
+                                                src="../assets/images/default-avatar.png"
+                                                alt="Teacher">
                                             <span class="ml-2 text-sm text-gray-600">
-                                                <?= htmlspecialchars($course['teacher_name']) ?>
+                                                <?= htmlspecialchars($course['first_name'] . ' ' . $course['last_name']) ?>
                                             </span>
                                         </div>
                                         <span class="text-lg font-medium text-indigo-600">
-                                            <?= formatCurrency($course['price']) ?>
+                                            $<?= number_format($course['price'], 2) ?>
                                         </span>
                                     </div>
                                     <div class="mt-4 flex items-center text-sm text-gray-500">
                                         <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
-                                            <?= ucfirst($course['level']) ?>
+                                            <?= ucfirst($course['level'] ?? 'All Levels') ?>
                                         </span>
                                         <span class="ml-2 flex items-center">
                                             <i class="fas fa-users mr-1"></i>
-                                            <?= $course['student_count'] ?> students
+                                            <?= $course['enrollment_count'] ?? 0 ?> students
                                         </span>
                                     </div>
                                 </div>

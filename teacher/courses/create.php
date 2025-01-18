@@ -55,7 +55,7 @@ require_once '../../includes/header.php';
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between">
                 <h1 class="text-3xl font-bold text-gray-900">Create New Course</h1>
-                <a href="list.php" class="text-indigo-600 hover:text-indigo-900">
+                <a href="view.php" class="text-indigo-600 hover:text-indigo-900">
                     <i class="fas fa-arrow-left"></i> Back to Courses
                 </a>
             </div>
@@ -128,7 +128,7 @@ require_once '../../includes/header.php';
                     </div>
 
                     <div class="mt-6 flex justify-end space-x-3">
-                        <a href="list.php" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <a href="view.php" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             Cancel
                         </a>
                         <button type="submit" class="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -144,6 +144,14 @@ require_once '../../includes/header.php';
 <script>
     const thumbnailInput = document.getElementById('thumbnail');
     const dropZone = thumbnailInput.closest('div.border-dashed');
+    const fileNameDisplay = document.createElement('p');
+    fileNameDisplay.className = 'mt-2 text-sm text-gray-600';
+    dropZone.appendChild(fileNameDisplay);
+
+    thumbnailInput.addEventListener('change', function(e) {
+        const fileName = e.target.files[0]?.name;
+        fileNameDisplay.textContent = fileName ? `Selected file: ${fileName}` : '';
+    });
 
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
@@ -176,6 +184,8 @@ require_once '../../includes/header.php';
         const dt = e.dataTransfer;
         const files = dt.files;
         thumbnailInput.files = files;
+        const fileName = files[0]?.name;
+        fileNameDisplay.textContent = fileName ? `Selected file: ${fileName}` : '';
     }
 </script>
 

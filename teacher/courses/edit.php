@@ -12,13 +12,13 @@ $category = new Category();
 
 $courseId = $_GET['id'] ?? null;
 if (!$courseId) {
-    header('Location: list.php');
+    header('Location: view.php');
     exit;
 }
 
 $courseData = $course->getById($courseId);
 if (!$courseData || $courseData['teacher_id'] != $_SESSION['user_id']) {
-    header('Location: list.php');
+    header('Location: view.php');
     exit;
 }
 
@@ -69,7 +69,7 @@ require_once '../../includes/header.php';
             <div class="flex items-center justify-between">
                 <h1 class="text-3xl font-bold text-gray-900">Edit Course</h1>
                 <div class="flex space-x-3">
-                    <a href="list.php" class="text-indigo-600 hover:text-indigo-900">
+                    <a href="view.php" class="text-indigo-600 hover:text-indigo-900">
                         <i class="fas fa-arrow-left"></i> Back to Courses
                     </a>
                     <a href="../../courses/view.php?id=<?= $courseId ?>" target="_blank" class="text-green-600 hover:text-green-900">
@@ -169,7 +169,7 @@ require_once '../../includes/header.php';
                     </div>
 
                     <div class="mt-6 flex justify-end space-x-3">
-                        <a href="list.php" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <a href="view.php" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             Cancel
                         </a>
                         <button type="submit" class="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">

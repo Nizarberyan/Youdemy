@@ -12,24 +12,23 @@ class Course
     // Create new course
     public function create($data)
     {
-        $query = "INSERT INTO {$this->table} 
-                 (teacher_id, category_id, title, description, price, level, status, thumbnail) 
-                 VALUES 
-                 (:teacher_id, :category_id, :title, :description, :price, :level, :status, :thumbnail)";
-
         try {
+            $query = "INSERT INTO courses (teacher_id, category_id, title, description, price, level, status, thumbnail) 
+                      VALUES (:teacher_id, :category_id, :title, :description, :price, :level, :status, :thumbnail)";
+
             $stmt = $this->db->prepare($query);
+            $stmt->execute([
+                'teacher_id' => $data['teacher_id'],
+                'category_id' => $data['category_id'],
+                'title' => $data['title'],
+                'description' => $data['description'],
+                'price' => $data['price'],
+                'level' => $data['level'],
+                'status' => $data['status'] ?? 'draft',
+                'thumbnail' => $data['thumbnail'] ?? null
+            ]);
 
-            $stmt->bindParam(':teacher_id', $data['teacher_id']);
-            $stmt->bindParam(':category_id', $data['category_id']);
-            $stmt->bindParam(':title', $data['title']);
-            $stmt->bindParam(':description', $data['description']);
-            $stmt->bindParam(':price', $data['price']);
-            $stmt->bindParam(':level', $data['level']);
-            $stmt->bindParam(':status', $data['status']);
-            $stmt->bindParam(':thumbnail', $data['thumbnail']);
-
-            if ($stmt->execute()) {
+            if ($stmt->rowCount() > 0) {
                 return $this->db->lastInsertId();
             }
             return false;
@@ -112,84 +111,65 @@ class Course
         }
     }
 
-    // Get all courses with filters
-    public function getAll($filters = [], $limit = null, $offset = null, $sort = 'newest')
+    public function getAll($filters = [], $limit = null, $offset = 0)
     {
-        $query = "SELECT c.*, u.first_name, u.last_name, 
-                  CONCAT(u.first_name, ' ', u.last_name) as teacher_name,
-                  u.profile_image as teacher_image,
-                  cat.name as category_name,
-                  (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as student_count
-                  FROM {$this->table} c
-                  JOIN users u ON c.teacher_id = u.id
-                  LEFT JOIN categories cat ON c.category_id = cat.id
-                  WHERE 1=1";
-
-        $params = [];
-
-        if (!empty($filters['category_id'])) {
-            $query .= " AND c.category_id = :category_id";
-            $params[':category_id'] = $filters['category_id'];
-        }
-
-        if (!empty($filters['search'])) {
-            $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
-            $params[':search'] = "%{$filters['search']}%";
-        }
-
-        if (!empty($filters['level'])) {
-            $query .= " AND c.level = :level";
-            $params[':level'] = $filters['level'];
-        }
-
-        if (!empty($filters['status'])) {
-            $query .= " AND c.status = :status";
-            $params[':status'] = $filters['status'];
-        }
-
-        if (!empty($filters['teacher_id'])) {
-            $query .= " AND c.teacher_id = :teacher_id";
-            $params[':teacher_id'] = $filters['teacher_id'];
-        }
-
-        switch ($sort) {
-            case 'popular':
-                $query .= " ORDER BY student_count DESC";
-                break;
-            case 'price_low':
-                $query .= " ORDER BY c.price ASC";
-                break;
-            case 'price_high':
-                $query .= " ORDER BY c.price DESC";
-                break;
-            default:
-                $query .= " ORDER BY c.created_at DESC";
-        }
-
-        if ($limit !== null) {
-            $query .= " LIMIT :limit";
-            $params[':limit'] = $limit;
-
-            if ($offset !== null) {
-                $query .= " OFFSET :offset";
-                $params[':offset'] = $offset;
-            }
-        }
-
         try {
+            $query = "SELECT c.*, u.first_name, u.last_name, cat.name as category_name,
+                     (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as enrollment_count 
+                     FROM courses c 
+                     LEFT JOIN users u ON c.teacher_id = u.id 
+                     LEFT JOIN categories cat ON c.category_id = cat.id";
+
+            $conditions = [];
+            $params = [];
+
+            if (!empty($filters['category_id'])) {
+                $conditions[] = "c.category_id = :category_id";
+                $params[':category_id'] = $filters['category_id'];
+            }
+
+            if (!empty($filters['status'])) {
+                $conditions[] = "c.status = :status";
+                $params[':status'] = $filters['status'];
+            }
+
+            if (!empty($filters['teacher_id'])) {
+                $conditions[] = "c.teacher_id = :teacher_id";
+                $params[':teacher_id'] = $filters['teacher_id'];
+            }
+
+            if (!empty($filters['search'])) {
+                $conditions[] = "(c.title LIKE :search OR c.description LIKE :search)";
+                $params[':search'] = "%" . $filters['search'] . "%";
+            }
+
+            if (!empty($conditions)) {
+                $query .= " WHERE " . implode(' AND ', $conditions);
+            }
+
+            $query .= " ORDER BY c.created_at DESC";
+
+            if ($limit !== null) {
+                $query .= " LIMIT :limit OFFSET :offset";
+                $params[':limit'] = (int)$limit;
+                $params[':offset'] = (int)$offset;
+            }
+
             $stmt = $this->db->prepare($query);
-            foreach ($params as $key => $value) {
-                if ($key == ':limit' || $key == ':offset') {
+
+            foreach ($params as $key => &$value) {
+                if ($key === ':limit' || $key === ':offset') {
                     $stmt->bindValue($key, $value, PDO::PARAM_INT);
                 } else {
                     $stmt->bindValue($key, $value);
                 }
             }
+
             $stmt->execute();
-            return $stmt->fetchAll();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Error getting courses: " . $e->getMessage());
-            return []; // Return empty array instead of false
+            return [];
         }
     }
 

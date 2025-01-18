@@ -5,8 +5,7 @@ class Category
 
     public function __construct()
     {
-        global $db;
-        $this->db = $db;
+        $this->db = Database::getInstance()->getConnection();
     }
 
     public function create($data)
