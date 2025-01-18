@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $result = $course->update($courseId, ['status' => 'draft']);
                 break;
             case 'delete':
-                $result = $course->delete($courseId);
+                $result = $course->delete($courseId, $teacherId);
                 break;
             default:
                 $result = false;

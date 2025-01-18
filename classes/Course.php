@@ -92,13 +92,19 @@ class Course
     }
 
     // Delete course
-    public function delete($id, $teacher_id)
+    public function delete($courseId, $teacherId = null)
     {
-        $query = "DELETE FROM {$this->table} WHERE id = :id AND teacher_id = :teacher_id";
         try {
+            $query = "DELETE FROM courses WHERE id = :id";
+            if ($teacherId !== null) {
+                $query .= " AND teacher_id = :teacher_id";
+            }
+
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':id', $id);
-            $stmt->bindParam(':teacher_id', $teacher_id);
+            $stmt->bindParam(':id', $courseId);
+            if ($teacherId !== null) {
+                $stmt->bindParam(':teacher_id', $teacherId);
+            }
             return $stmt->execute();
         } catch (PDOException $e) {
             error_log("Error deleting course: " . $e->getMessage());
