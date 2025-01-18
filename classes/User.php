@@ -81,25 +81,30 @@ class User
     // Update user
     public function update($id, $data)
     {
-        $query = "UPDATE {$this->table} 
-                 SET first_name = :firstName, 
-                     last_name = :lastName, 
-                     email = :email,
-                     status = :status
-                 WHERE id = :id";
-
         try {
+            $setFields = [];
+            $params = [];
+
+            foreach ($data as $field => $value) {
+                $setFields[] = "`$field` = :$field";
+                $params[$field] = $value;
+            }
+
+            $params['id'] = $id;
+
+            $query = "UPDATE users SET " . implode(', ', $setFields) . " WHERE id = :id";
+            error_log("Update query: " . $query . " with params: " . print_r($params, true));
+
             $stmt = $this->db->prepare($query);
+            $result = $stmt->execute($params);
 
-            $stmt->bindParam(':firstName', $data['firstName']);
-            $stmt->bindParam(':lastName', $data['lastName']);
-            $stmt->bindParam(':email', $data['email']);
-            $stmt->bindParam(':status', $data['status']);
-            $stmt->bindParam(':id', $id);
+            if (!$result) {
+                error_log("Update failed. Error info: " . print_r($stmt->errorInfo(), true));
+            }
 
-            return $stmt->execute();
+            return $result;
         } catch (PDOException $e) {
-            error_log("Error updating user: " . $e->getMessage());
+            error_log("Database error in update: " . $e->getMessage());
             return false;
         }
     }
@@ -135,37 +140,43 @@ class User
     }
 
     // Get all users with optional filtering
-    public function getAll($role = null, $status = null, $limit = null, $offset = 0)
+    public function getAll($role = '', $status = '', $limit = null, $offset = 0)
     {
-        $query = "SELECT * FROM {$this->table} WHERE 1=1";
-        $params = [];
-
-        if ($role) {
-            $query .= " AND role = :role";
-            $params[':role'] = $role;
-        }
-
-        if ($status) {
-            $query .= " AND status = :status";
-            $params[':status'] = $status;
-        }
-
-        if ($limit) {
-            $query .= " LIMIT :limit OFFSET :offset";
-            $params[':limit'] = $limit;
-            $params[':offset'] = $offset;
-        }
-
         try {
-            $stmt = $this->db->prepare($query);
-            foreach ($params as $key => &$value) {
-                $stmt->bindParam($key, $value);
+            $params = [];
+            $conditions = [];
+
+            if (!empty($role)) {
+                $conditions[] = "role = :role";
+                $params[':role'] = $role;
             }
+
+            if (!empty($status)) {
+                $conditions[] = "status = :status";
+                $params[':status'] = $status;
+            }
+
+            $whereClause = !empty($conditions) ? "WHERE " . implode(' AND ', $conditions) : "";
+            $limitClause = $limit ? "LIMIT :limit OFFSET :offset" : "";
+
+            $query = "SELECT * FROM users $whereClause ORDER BY created_at DESC $limitClause";
+
+            $stmt = $this->db->prepare($query);
+
+            if ($limit) {
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            }
+
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+
             $stmt->execute();
-            return $stmt->fetchAll();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("Error getting users: " . $e->getMessage());
-            return false;
+            error_log("Error in getAll: " . $e->getMessage());
+            return [];  // Return empty array instead of false
         }
     }
 

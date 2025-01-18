@@ -1,12 +1,13 @@
 <?php
+session_start();
 require_once '../config/database.php';
 require_once '../classes/Auth.php';
 require_once '../classes/User.php';
 require_once '../classes/Course.php';
 require_once '../classes/Category.php';
-
-$auth = new Auth();
-$auth->requireRole('admin');
+// die(var_dump($_SESSION['user_role']));
+// $auth = new Auth();
+// $auth->requireRole('admin');
 
 $user = new User();
 $course = new Course();
@@ -135,20 +136,41 @@ require_once '../includes/header.php';
                                                 <p class="text-sm text-gray-500"><?= htmlspecialchars($teacher['email']) ?></p>
                                             </div>
                                         </div>
-                                        <div class="flex space-x-2">
-                                            <button onclick="approveTeacher(<?= $teacher['id'] ?>)" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-                                                Approve
-                                            </button>
-                                            <button onclick="rejectTeacher(<?= $teacher['id'] ?>)" class="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
-                                                Reject
-                                            </button>
-                                        </div>
+                                        <?php if ($teacher['status'] === 'pending'): ?>
+                                            <div class="flex space-x-2">
+                                                <form method="POST" action="users.php" class="inline">
+                                                    <input type="hidden" name="action" value="approve">
+                                                    <input type="hidden" name="id" value="<?= $teacher['id'] ?>">
+                                                    <button type="submit" 
+                                                        onclick="return confirm('Are you sure you want to approve this teacher?')"
+                                                        class="text-green-600 hover:text-green-900">
+                                                        Approve
+                                                    </button>
+                                                </form>
+                                                
+                                                <form method="POST" action="users.php" class="inline">
+                                                    <input type="hidden" name="action" value="reject">
+                                                    <input type="hidden" name="id" value="<?= $teacher['id'] ?>">
+                                                    <button type="submit" 
+                                                        onclick="return confirm('Are you sure you want to reject this teacher?')"
+                                                        class="text-red-600 hover:text-red-900">
+                                                        Reject
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
                     </div>
                 </div>
+            </div>
+
+            <div class="flex space-x-4">
+                <a href="users.php" class="text-gray-600 hover:text-gray-900">Users</a>
+                <a href="courses.php" class="text-gray-600 hover:text-gray-900">Courses</a>
+                <a href="categories.php" class="text-gray-600 hover:text-gray-900">Categories</a>
             </div>
         </div>
     </div>

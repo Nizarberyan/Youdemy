@@ -31,16 +31,16 @@ $userRole = $_SESSION['user_role'] ?? null;
                         <a href="../index.php" class="<?= $currentPage === 'index.php' ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Home
                         </a>
-                        <a href="/courses" class="<?= strpos($currentPage, 'courses') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <a href="courses/view.php" class="<?= strpos($currentPage, 'courses') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Courses
                         </a>
                         <?php if ($isLoggedIn && $userRole === 'teacher'): ?>
-                            <a href="/teacher" class="<?= strpos($_SERVER['REQUEST_URI'], '/teacher') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            <a href="teacher/index.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/teacher') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Teacher Dashboard
                             </a>
                         <?php endif; ?>
                         <?php if ($isLoggedIn && $userRole === 'admin'): ?>
-                            <a href="/admin" class="<?= strpos($_SERVER['REQUEST_URI'], '/admin') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            <a href="admin/index.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/admin') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Admin Dashboard
                             </a>
                         <?php endif; ?>
@@ -48,6 +48,7 @@ $userRole = $_SESSION['user_role'] ?? null;
                 </div>
                 <div class="hidden sm:ml-6 sm:flex sm:items-center">
                     <?php if ($isLoggedIn): ?>
+                        <a href="auth/logout.php" class="mr-4 text-gray-500 hover:text-gray-700">Logout</a>
                         <div class="ml-3 relative">
                             <div>
                                 <button type="button" onclick="toggleDropdown()" class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
@@ -162,4 +163,3 @@ $userRole = $_SESSION['user_role'] ?? null;
             }
         });
     </script>
-

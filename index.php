@@ -8,13 +8,13 @@ session_start();
 
 
 // Check if user is already logged in and trying to access login/register
-if (isset($_SESSION['user_id'])) {
-    $currentPage = basename($_SERVER['PHP_SELF']);
-    if (in_array($currentPage, ['login.php', 'register.php'])) {
-        header('Location: ../index.php');
-        exit;
-    }
-}
+// if (isset($_SESSION['user_id'])) {
+//     $currentPage = basename($_SERVER['PHP_SELF']);
+//     if (in_array($currentPage, ['login.php', 'register.php'])) {
+//         header('Location: ../index.php');
+//         exit;
+//     }
+// }
 
 $course = new Course();
 $category = new Category();

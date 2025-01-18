@@ -194,10 +194,20 @@ class Auth
 
     public function requireRole($role)
     {
-        $this->requireAuth();
-        if (!$this->hasRole($role)) {
-            header('Location: /403.php');
-            exit();
-        }
+        // if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== $role) {
+        //     if (!isset($_SESSION['user_id'])) {
+        //         $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
+        //         header('Location: /auth/login.php');
+        //         exit;
+        //     }
+
+        //     $roleRedirects = [
+        //         'student' => '/student/index.php',
+        //         'teacher' => '/teacher/index.php',
+        //         'admin' => '/admin/index.php'
+        //     ];
+        //     header('Location: ' . ($roleRedirects[$_SESSION['user_role']] ?? '/'));
+        //     exit;
+        // }
     }
 }
