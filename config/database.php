@@ -1,30 +1,43 @@
 <?php
 class Database
 {
-    private $host = "localhost";
-    private $db_name = "youdemy";
-    private $username = "root";
-    private $password = "";
-    private $conn;
+    private static $instance = null;
+    private $connection;
 
+    private function __construct()
+    {
+        try {
+            $this->connection = new PDO(
+                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME,
+                DB_USER,
+                DB_PASS,
+                array(PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION)
+            );
+        } catch (PDOException $e) {
+            die("Connection failed: " . $e->getMessage());
+        }
+    }
+
+    public static function getInstance()
+    {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
 
     public function getConnection()
     {
-        $this->conn = null;
-
-        try {
-            $this->conn = new PDO(
-                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
-                $this->username,
-                $this->password
-            );
-            $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->conn->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-            $this->conn->exec("set names utf8");
-        } catch (PDOException $e) {
-            echo "Connection Error: " . $e->getMessage();
-        }
-
-        return $this->conn;
+        return $this->connection;
     }
+
+    private function __clone() {}
+
+    public function __wakeup() {}
 }
+
+// Database configuration
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'youdemy');
+define('DB_USER', 'root');
+define('DB_PASS', '');

@@ -107,35 +107,23 @@ class Course
     }
 
     // Get all courses with filters
-    public function getAll($filters = [], $limit = null, $offset = 0)
+    public function getAll($filters = [], $limit = null, $offset = null, $sort = 'newest')
     {
-        $query = "SELECT c.*, u.first_name, u.last_name, cat.name as category_name 
-                 FROM {$this->table} c
-                 JOIN users u ON c.teacher_id = u.id
-                 JOIN categories cat ON c.category_id = cat.id
-                 WHERE 1=1";
+        $query = "SELECT c.*, u.first_name, u.last_name, 
+                  CONCAT(u.first_name, ' ', u.last_name) as teacher_name,
+                  u.profile_image as teacher_image,
+                  cat.name as category_name,
+                  (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as student_count
+                  FROM {$this->table} c
+                  JOIN users u ON c.teacher_id = u.id
+                  LEFT JOIN categories cat ON c.category_id = cat.id
+                  WHERE 1=1";
 
         $params = [];
 
-        // Add filters
         if (!empty($filters['category_id'])) {
             $query .= " AND c.category_id = :category_id";
             $params[':category_id'] = $filters['category_id'];
-        }
-
-        if (!empty($filters['teacher_id'])) {
-            $query .= " AND c.teacher_id = :teacher_id";
-            $params[':teacher_id'] = $filters['teacher_id'];
-        }
-
-        if (!empty($filters['status'])) {
-            $query .= " AND c.status = :status";
-            $params[':status'] = $filters['status'];
-        }
-
-        if (!empty($filters['level'])) {
-            $query .= " AND c.level = :level";
-            $params[':level'] = $filters['level'];
         }
 
         if (!empty($filters['search'])) {
@@ -143,26 +131,59 @@ class Course
             $params[':search'] = "%{$filters['search']}%";
         }
 
-        // Add sorting
-        $query .= " ORDER BY c.created_at DESC";
+        if (!empty($filters['level'])) {
+            $query .= " AND c.level = :level";
+            $params[':level'] = $filters['level'];
+        }
 
-        // Add pagination
-        if ($limit) {
-            $query .= " LIMIT :limit OFFSET :offset";
+        if (!empty($filters['status'])) {
+            $query .= " AND c.status = :status";
+            $params[':status'] = $filters['status'];
+        }
+
+        if (!empty($filters['teacher_id'])) {
+            $query .= " AND c.teacher_id = :teacher_id";
+            $params[':teacher_id'] = $filters['teacher_id'];
+        }
+
+        switch ($sort) {
+            case 'popular':
+                $query .= " ORDER BY student_count DESC";
+                break;
+            case 'price_low':
+                $query .= " ORDER BY c.price ASC";
+                break;
+            case 'price_high':
+                $query .= " ORDER BY c.price DESC";
+                break;
+            default:
+                $query .= " ORDER BY c.created_at DESC";
+        }
+
+        if ($limit !== null) {
+            $query .= " LIMIT :limit";
             $params[':limit'] = $limit;
-            $params[':offset'] = $offset;
+
+            if ($offset !== null) {
+                $query .= " OFFSET :offset";
+                $params[':offset'] = $offset;
+            }
         }
 
         try {
             $stmt = $this->db->prepare($query);
-            foreach ($params as $key => &$value) {
-                $stmt->bindParam($key, $value);
+            foreach ($params as $key => $value) {
+                if ($key == ':limit' || $key == ':offset') {
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value);
+                }
             }
             $stmt->execute();
             return $stmt->fetchAll();
         } catch (PDOException $e) {
             error_log("Error getting courses: " . $e->getMessage());
-            return false;
+            return []; // Return empty array instead of false
         }
     }
 
@@ -247,6 +268,30 @@ class Course
         } catch (PDOException $e) {
             error_log("Error getting popular courses: " . $e->getMessage());
             return false;
+        }
+    }
+
+    // Get featured courses
+    public function getFeatured($limit = 6)
+    {
+        $query = "SELECT c.*, u.first_name, u.last_name, 
+                  CONCAT(u.first_name, ' ', u.last_name) as teacher_name,
+                  u.profile_image as teacher_image,
+                  (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as student_count
+                  FROM {$this->table} c
+                  JOIN users u ON c.teacher_id = u.id
+                  WHERE c.status = 'published' AND c.featured = 1
+                  ORDER BY c.created_at DESC
+                  LIMIT :limit";
+
+        try {
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Error getting featured courses: " . $e->getMessage());
+            return [];
         }
     }
 }

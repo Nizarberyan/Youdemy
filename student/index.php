@@ -28,7 +28,7 @@ require_once '../includes/header.php';
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center">
                 <h1 class="text-3xl font-bold text-gray-900">My Learning Dashboard</h1>
-                <a href="../courses/browse.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
+                <a href="../courses/index.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">
                     Browse Courses
                 </a>
             </div>
