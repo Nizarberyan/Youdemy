@@ -1,57 +1,90 @@
 <?php
+session_start();
 require_once '../config/database.php';
 require_once '../classes/Auth.php';
 require_once '../classes/User.php';
+require_once '../classes/Teacher.php';
+
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header('Location: ../auth/login.php');
+    exit();
+}
 
 $auth = new Auth();
 $auth->requireRole('teacher');
 
-$user = new User();
-$userId = $_SESSION['user_id'];
-$userData = $user->getById($userId);
+// Create Teacher instance
+$teacher = new Teacher($_SESSION['user_id']);
+$userData = $teacher->getById($_SESSION['user_id']);
+$teacherData = $teacher->getSpecificData();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $uploadDir = '../assets/images/uploads/profiles/';
-    $profileImage = $userData['profile_image'];
-
-    if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
-        if ($profileImage && file_exists('../' . $profileImage)) {
-            unlink('../' . $profileImage);
+    try {
+        $uploadDir = '../assets/images/uploads/profiles/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
         }
 
-        $fileExtension = pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION);
-        $fileName = uniqid('profile_') . '.' . $fileExtension;
-        $profileImage = 'assets/images/uploads/profiles/' . $fileName;
+        $profileImage = $userData['profile_image'];
 
-        if (!move_uploaded_file($_FILES['profile_image']['tmp_name'], $uploadDir . $fileName)) {
-            $error = "Error uploading profile image";
+        if (isset($_FILES['profile_image']) && $_FILES['profile_image']['error'] === UPLOAD_ERR_OK) {
+            // Delete old profile image if it exists
+            if ($profileImage && file_exists('../' . $profileImage)) {
+                unlink('../' . $profileImage);
+            }
+
+            $fileExtension = strtolower(pathinfo($_FILES['profile_image']['name'], PATHINFO_EXTENSION));
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+
+            if (!in_array($fileExtension, $allowedExtensions)) {
+                throw new Exception("Invalid file type. Only JPG, PNG and GIF are allowed.");
+            }
+
+            $fileName = uniqid('profile_') . '.' . $fileExtension;
+            $profileImage = 'assets/images/uploads/profiles/' . $fileName;
+
+            if (!move_uploaded_file($_FILES['profile_image']['tmp_name'], $uploadDir . $fileName)) {
+                throw new Exception("Error uploading profile image");
+            }
         }
-    }
 
-    $updateData = [
-        'first_name' => $_POST['first_name'],
-        'last_name' => $_POST['last_name'],
-        'email' => $_POST['email'],
-        'bio' => $_POST['bio'],
-        'expertise' => $_POST['expertise'],
-        'profile_image' => $profileImage
-    ];
+        // Update user data
+        $updateData = [
+            'first_name' => $_POST['first_name'],
+            'last_name' => $_POST['last_name'],
+            'email' => $_POST['email'],
+            'profile_image' => $profileImage
+        ];
 
-    if (isset($_POST['password']) && !empty($_POST['password'])) {
-        if ($_POST['password'] === $_POST['password_confirm']) {
+        // Handle password update if provided
+        if (!empty($_POST['password'])) {
+            if ($_POST['password'] !== $_POST['password_confirm']) {
+                throw new Exception("Passwords do not match");
+            }
             $updateData['password'] = password_hash($_POST['password'], PASSWORD_DEFAULT);
-        } else {
-            $error = "Passwords do not match";
         }
-    }
 
-    if (!isset($error)) {
-        if ($user->update($userId, $updateData)) {
-            $success = "Profile updated successfully";
-            $userData = $user->getById($userId);
-        } else {
-            $error = "Error updating profile";
+        // Update base user data
+        if (!$teacher->update($_SESSION['user_id'], $updateData)) {
+            throw new Exception("Error updating user profile");
         }
+
+        // Update teacher-specific data
+        $teacherUpdateData = [
+            'bio' => $_POST['bio'],
+            'specialization' => $_POST['expertise']
+        ];
+
+        if (!$teacher->updateSpecificData($teacherUpdateData)) {
+            throw new Exception("Error updating teacher profile");
+        }
+
+        $success = "Profile updated successfully";
+        $userData = $teacher->getById($_SESSION['user_id']);
+        $teacherData = $teacher->getSpecificData();
+    } catch (Exception $e) {
+        $error = $e->getMessage();
     }
 }
 
@@ -126,14 +159,14 @@ require_once '../includes/header.php';
                         <div>
                             <label for="bio" class="block text-sm font-medium text-gray-700">Bio</label>
                             <textarea name="bio" id="bio" rows="4"
-                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"><?= htmlspecialchars($userData['bio'] ?? '') ?></textarea>
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"><?= htmlspecialchars($teacherData['bio'] ?? '') ?></textarea>
                             <p class="mt-2 text-sm text-gray-500">Brief description for your profile.</p>
                         </div>
 
                         <div>
                             <label for="expertise" class="block text-sm font-medium text-gray-700">Areas of Expertise</label>
                             <input type="text" name="expertise" id="expertise"
-                                value="<?= htmlspecialchars($userData['expertise'] ?? '') ?>"
+                                value="<?= htmlspecialchars($teacherData['specialization'] ?? '') ?>"
                                 class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <p class="mt-2 text-sm text-gray-500">Separate multiple areas with commas.</p>
                         </div>

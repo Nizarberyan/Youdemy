@@ -14,39 +14,42 @@ $category = new Category();
 $teacherId = $_SESSION['user_id'];
 $status = $_GET['status'] ?? '';
 $search = $_GET['search'] ?? '';
-$page = $_GET['page'] ?? 1;
+$page = (int)($_GET['page'] ?? 1);
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-$filters = [
-    'teacher_id' => $teacherId,
-    'status' => $status,
-    'search' => $search
-];
+// Build filters array
+$filters = ['teacher_id' => $teacherId];
+if (!empty($status)) {
+    $filters['status'] = $status;
+}
+if (!empty($search)) {
+    $filters['search'] = $search;
+}
 
+// Get courses with filters
 $courses = $course->getAll($filters, $limit, $offset);
 $totalCourses = $course->countAll($filters);
 $totalPages = ceil($totalCourses / $limit);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    header('Content-Type: application/json');
-
     $action = $_POST['action'] ?? '';
     $courseId = $_POST['course_id'] ?? null;
 
     if ($courseId && $action) {
         $courseData = $course->getById($courseId);
         if ($courseData['teacher_id'] != $teacherId) {
-            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            $_SESSION['error'] = 'Unauthorized action';
+            header('Location: view.php');
             exit;
         }
 
         switch ($action) {
             case 'publish':
-                $result = $course->update($courseId, ['status' => 'published']);
+                $result = $course->update($courseId, ['status' => 'published'], $teacherId);
                 break;
             case 'unpublish':
-                $result = $course->update($courseId, ['status' => 'draft']);
+                $result = $course->update($courseId, ['status' => 'draft'], $teacherId);
                 break;
             case 'delete':
                 $result = $course->delete($courseId, $teacherId);
@@ -55,13 +58,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $result = false;
         }
 
-        echo json_encode(['success' => $result]);
+        if ($result) {
+            $_SESSION['success'] = 'Course updated successfully';
+        } else {
+            $_SESSION['error'] = 'Failed to update course';
+        }
+        header('Location: view.php');
         exit;
     }
 }
 
 require_once '../../includes/header.php';
 ?>
+
+<!-- Success Message -->
+<?php if (isset($_SESSION['success'])): ?>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+            <?= $_SESSION['success'] ?>
+            <?php unset($_SESSION['success']); ?>
+        </div>
+    </div>
+<?php endif; ?>
+
+<!-- Error Message -->
+<?php if (isset($_SESSION['error'])): ?>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <?= $_SESSION['error'] ?>
+            <?php unset($_SESSION['error']); ?>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="min-h-screen bg-gray-100">
     <div class="py-6">

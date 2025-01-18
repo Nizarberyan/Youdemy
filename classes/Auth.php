@@ -2,21 +2,73 @@
 class Auth
 {
     private $db;
-    private $table = 'users';
 
     public function __construct()
     {
         $this->db = Database::getInstance()->getConnection();
     }
 
+    public function register($data)
+    {
+        try {
+            $this->db->beginTransaction();
+
+            // First, create the user record
+            $query = "INSERT INTO users (email, password, first_name, last_name, role, status) 
+                     VALUES (:email, :password, :first_name, :last_name, :role, :status)";
+
+            $stmt = $this->db->prepare($query);
+            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
+
+            // Set status based on role - students are automatically active
+            $status = ($data['role'] === 'teacher') ? 'pending' : 'active';
+
+            $stmt->execute([
+                'email' => $data['email'],
+                'password' => $hashedPassword,
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'role' => $data['role'],
+                'status' => $status
+            ]);
+
+            $userId = $this->db->lastInsertId();
+
+            // Handle role-specific data
+            if ($data['role'] === 'teacher') {
+                $teacherQuery = "INSERT INTO teachers (user_id, bio, specialization) 
+                                VALUES (:user_id, :bio, :specialization)";
+                $stmt = $this->db->prepare($teacherQuery);
+                $stmt->execute([
+                    'user_id' => $userId,
+                    'bio' => $data['bio'] ?? null,
+                    'specialization' => $data['specialization'] ?? null
+                ]);
+            } elseif ($data['role'] === 'student') {
+                $studentQuery = "INSERT INTO students (user_id, education_level) 
+                               VALUES (:user_id, :education_level)";
+                $stmt = $this->db->prepare($studentQuery);
+                $stmt->execute([
+                    'user_id' => $userId,
+                    'education_level' => $data['education_level'] ?? null
+                ]);
+            }
+
+            $this->db->commit();
+            return ['success' => true, 'status' => $status, 'role' => $data['role']];
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("Registration error: " . $e->getMessage());
+            return false;
+        }
+    }
+
     public function login($email, $password)
     {
         try {
-            $query = "SELECT * FROM {$this->table} WHERE email = :email";
+            $query = "SELECT * FROM users WHERE email = :email";
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':email', $email);
-            $stmt->execute();
-
+            $stmt->execute(['email' => $email]);
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password'])) {
@@ -24,8 +76,11 @@ class Auth
                     return ['error' => 'Account is not active'];
                 }
 
-                $this->setSession($user);
-                return ['success' => true, 'user' => $user];
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
+
+                return ['success' => true, 'role' => $user['role']];
             }
 
             return ['error' => 'Invalid credentials'];
@@ -35,47 +90,22 @@ class Auth
         }
     }
 
-    public function register($data)
-    {
-        try {
-            $query = "SELECT id FROM {$this->table} WHERE email = :email";
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':email', $data['email']);
-            $stmt->execute();
-
-            if ($stmt->fetch()) {
-                return ['error' => 'Email already exists'];
-            }
-
-            $query = "INSERT INTO {$this->table} (email, password, first_name, last_name, role, status) 
-                     VALUES (:email, :password, :first_name, :last_name, :role, :status)";
-
-            $stmt = $this->db->prepare($query);
-
-            $hashedPassword = password_hash($data['password'], PASSWORD_DEFAULT);
-            $status = ($data['role'] === 'teacher') ? 'pending' : 'active';
-
-            $stmt->bindParam(':email', $data['email']);
-            $stmt->bindParam(':password', $hashedPassword);
-            $stmt->bindParam(':first_name', $data['first_name']);
-            $stmt->bindParam(':last_name', $data['last_name']);
-            $stmt->bindParam(':role', $data['role']);
-            $stmt->bindParam(':status', $status);
-
-            $stmt->execute();
-            return ['success' => true, 'user_id' => $this->db->lastInsertId()];
-        } catch (PDOException $e) {
-            error_log("Registration error: " . $e->getMessage());
-            return ['error' => 'Registration failed'];
-        }
-    }
-
     public function logout()
     {
-        session_start();
-        session_unset();
+        // Clear all session data
+        $_SESSION = array();
+
+        // Destroy the session cookie
+        if (isset($_COOKIE[session_name()])) {
+            setcookie(session_name(), '', time() - 3600, '/');
+        }
+
+        // Destroy the session
         session_destroy();
-        return true;
+
+        // Redirect to login page
+        header('Location: /auth/login.php');
+        exit();
     }
 
     public function isLoggedIn()
@@ -83,108 +113,7 @@ class Auth
         return isset($_SESSION['user_id']);
     }
 
-    public function getCurrentUser()
-    {
-        if (!$this->isLoggedIn()) {
-            return null;
-        }
-
-        try {
-            $query = "SELECT * FROM {$this->table} WHERE id = :id";
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':id', $_SESSION['user_id']);
-            $stmt->execute();
-            return $stmt->fetch();
-        } catch (PDOException $e) {
-            error_log("Get current user error: " . $e->getMessage());
-            return null;
-        }
-    }
-
-    public function hasRole($role)
-    {
-        return isset($_SESSION['user_role']) && $_SESSION['user_role'] === $role;
-    }
-
-    public function resetPassword($email)
-    {
-        try {
-            $token = bin2hex(random_bytes(32));
-            $expiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
-
-            $query = "UPDATE {$this->table} 
-                     SET reset_token = :token, 
-                         reset_expiry = :expiry 
-                     WHERE email = :email";
-
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':token', $token);
-            $stmt->bindParam(':expiry', $expiry);
-            $stmt->bindParam(':email', $email);
-
-            if ($stmt->execute()) {
-                return ['success' => true, 'token' => $token];
-            }
-            return ['error' => 'Password reset failed'];
-        } catch (PDOException $e) {
-            error_log("Password reset error: " . $e->getMessage());
-            return ['error' => 'Password reset failed'];
-        }
-    }
-
-    public function verifyResetToken($token)
-    {
-        try {
-            $query = "SELECT id FROM {$this->table} 
-                     WHERE reset_token = :token 
-                     AND reset_expiry > NOW() 
-                     AND status = 'active'";
-
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':token', $token);
-            $stmt->execute();
-
-            return $stmt->fetch() !== false;
-        } catch (PDOException $e) {
-            error_log("Token verification error: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    public function updatePassword($token, $newPassword)
-    {
-        try {
-            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-
-            $query = "UPDATE {$this->table} 
-                     SET password = :password,
-                         reset_token = NULL,
-                         reset_expiry = NULL
-                     WHERE reset_token = :token 
-                     AND reset_expiry > NOW()";
-
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':password', $hashedPassword);
-            $stmt->bindParam(':token', $token);
-
-            return $stmt->execute();
-        } catch (PDOException $e) {
-            error_log("Password update error: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function setSession($user)
-    {
-        session_start();
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_email'] = $user['email'];
-        $_SESSION['user_role'] = $user['role'];
-        $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
-        $_SESSION['last_activity'] = time();
-    }
-
-    public function requireAuth()
+    public function requireLogin()
     {
         if (!$this->isLoggedIn()) {
             header('Location: /auth/login.php');
@@ -194,20 +123,19 @@ class Auth
 
     public function requireRole($role)
     {
-        // if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== $role) {
-        //     if (!isset($_SESSION['user_id'])) {
-        //         $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
-        //         header('Location: /auth/login.php');
-        //         exit;
-        //     }
+        $this->requireLogin();
+        if ($_SESSION['role'] !== $role && $_SESSION['role'] !== 'admin') {
+            header('Location: /403.php');
+            exit();
+        }
+    }
 
-        //     $roleRedirects = [
-        //         'student' => '/student/index.php',
-        //         'teacher' => '/teacher/index.php',
-        //         'admin' => '/admin/index.php'
-        //     ];
-        //     header('Location: ' . ($roleRedirects[$_SESSION['user_role']] ?? '/'));
-        //     exit;
-        // }
+    public function getCurrentUser()
+    {
+        if (!$this->isLoggedIn()) {
+            return null;
+        }
+
+        return User::createUser($_SESSION['role'], $_SESSION['user_id']);
     }
 }

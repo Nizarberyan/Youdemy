@@ -105,7 +105,7 @@ require_once '../includes/header.php';
                                 <li class="py-4">
                                     <div class="flex items-center space-x-4">
                                         <div class="flex-shrink-0">
-                                            <img class="h-8 w-8 rounded-full" src="<?= $course['thumbnail'] ?? '../assets/images/course-default.png' ?>" alt="">
+                                            <img class="h-8 w-8 rounded-full" src="<?= $course['thumbnail'] ?? 'assets\images\default-avatar.png' ?>" alt="">
                                         </div>
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-gray-900 truncate"><?= htmlspecialchars($course['title']) ?></p>

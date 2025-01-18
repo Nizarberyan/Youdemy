@@ -14,31 +14,39 @@ $auth = new Auth();
 $error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $userData = [
-        'first_name' => $_POST['first_name'] ?? '',
-        'last_name' => $_POST['last_name'] ?? '',
-        'email' => $_POST['email'] ?? '',
-        'password' => $_POST['password'] ?? '',
-        'role' => $_POST['role'] ?? 'student'
+    $data = [
+        'first_name' => $_POST['first_name'],
+        'last_name' => $_POST['last_name'],
+        'email' => $_POST['email'],
+        'password' => $_POST['password'],
+        'role' => $_POST['role']
     ];
 
-    $passwordConfirm = $_POST['password_confirm'] ?? '';
+    // Add role-specific data
+    if ($_POST['role'] === 'teacher') {
+        $data['bio'] = $_POST['bio'];
+        $data['specialization'] = $_POST['specialization'];
+    } elseif ($_POST['role'] === 'student') {
+        $data['education_level'] = $_POST['education_level'];
+    }
 
-    try {
-        if ($userData['password'] !== $passwordConfirm) {
-            throw new Exception('Passwords do not match');
-        }
-
-        if ($auth->register($userData)) {
-            // Auto login after registration
-            $auth->login($userData['email'], $userData['password']);
-            header('Location: ../index.php');
-            exit;
+    $result = $auth->register($data);
+    if ($result && $result['success']) {
+        if ($result['role'] === 'teacher') {
+            $_SESSION['success'] = "Registration successful! Please wait for admin approval.";
+            header('Location: login.php');
         } else {
-            $error = "Registration failed";
+            // For students, log them in automatically
+            $loginResult = $auth->login($data['email'], $data['password']);
+            if ($loginResult['success']) {
+                header('Location: /student/index.php');
+            } else {
+                header('Location: login.php');
+            }
         }
-    } catch (Exception $e) {
-        $error = $e->getMessage();
+        exit();
+    } else {
+        $error = "Registration failed. Please try again.";
     }
 }
 
@@ -50,101 +58,91 @@ require_once '../includes/header.php';
         <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
         </h2>
-        <p class="mt-2 text-center text-sm text-gray-600">
-            Or
-            <a href="login.php" class="font-medium text-indigo-600 hover:text-indigo-500">
-                sign in to your existing account
-            </a>
-        </p>
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            <?php if ($error): ?>
+            <?php if (isset($error)): ?>
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
                     <span class="block sm:inline"><?= htmlspecialchars($error) ?></span>
                 </div>
             <?php endif; ?>
 
             <form class="space-y-6" action="register.php" method="POST">
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="first_name" class="block text-sm font-medium text-gray-700">
-                            First name
-                        </label>
-                        <div class="mt-1">
-                            <input id="first_name" name="first_name" type="text" required
-                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
+                        <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+                        <input type="text" name="first_name" id="first_name" required
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
 
                     <div>
-                        <label for="last_name" class="block text-sm font-medium text-gray-700">
-                            Last name
-                        </label>
-                        <div class="mt-1">
-                            <input id="last_name" name="last_name" type="text" required
-                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        </div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+                        <input type="text" name="last_name" id="last_name" required
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                     </div>
                 </div>
 
                 <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">
-                        Email address
-                    </label>
-                    <div class="mt-1">
-                        <input id="email" name="email" type="email" autocomplete="email" required
-                            class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    </div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                    <input type="email" name="email" id="email" required
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
 
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700">
-                        Password
-                    </label>
-                    <div class="mt-1">
-                        <input id="password" name="password" type="password" required
-                            class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    </div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" name="password" id="password" required
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
 
                 <div>
-                    <label for="password_confirm" class="block text-sm font-medium text-gray-700">
-                        Confirm password
-                    </label>
-                    <div class="mt-1">
-                        <input id="password_confirm" name="password_confirm" type="password" required
-                            class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                    </div>
-                </div>
-
-                <div>
-                    <label for="role" class="block text-sm font-medium text-gray-700">
-                        I want to
-                    </label>
-                    <select id="role" name="role" required
-                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                        <option value="student">Learn as a student</option>
-                        <option value="teacher">Teach as an instructor</option>
+                    <label for="role" class="block text-sm font-medium text-gray-700">I want to</label>
+                    <select name="role" id="role" required onchange="toggleRoleFields(this.value)"
+                        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">Select role</option>
+                        <option value="student">Learn on Youdemy</option>
+                        <option value="teacher">Teach on Youdemy</option>
                     </select>
                 </div>
 
-                <div class="flex items-center">
-                    <input id="terms" name="terms" type="checkbox" required
-                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                    <label for="terms" class="ml-2 block text-sm text-gray-900">
-                        I agree to the
-                        <a href="#" class="text-indigo-600 hover:text-indigo-500">Terms</a>
-                        and
-                        <a href="#" class="text-indigo-600 hover:text-indigo-500">Privacy Policy</a>
-                    </label>
+                <!-- Teacher-specific fields -->
+                <div id="teacher-fields" style="display: none;">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="bio" class="block text-sm font-medium text-gray-700">Bio</label>
+                            <textarea name="bio" id="bio" rows="3"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label for="specialization" class="block text-sm font-medium text-gray-700">Areas of Expertise</label>
+                            <input type="text" name="specialization" id="specialization"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <p class="mt-1 text-sm text-gray-500">Separate multiple areas with commas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student-specific fields -->
+                <div id="student-fields" style="display: none;">
+                    <div>
+                        <label for="education_level" class="block text-sm font-medium text-gray-700">Education Level</label>
+                        <select name="education_level" id="education_level"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Select level</option>
+                            <option value="high_school">High School</option>
+                            <option value="bachelors">Bachelor's Degree</option>
+                            <option value="masters">Master's Degree</option>
+                            <option value="phd">PhD</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div>
                     <button type="submit"
                         class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Create account
+                        Register
                     </button>
                 </div>
             </form>
@@ -156,31 +154,49 @@ require_once '../includes/header.php';
                     </div>
                     <div class="relative flex justify-center text-sm">
                         <span class="px-2 bg-white text-gray-500">
-                            Or continue with
+                            Already have an account?
                         </span>
                     </div>
                 </div>
 
-                <div class="mt-6 grid grid-cols-2 gap-3">
-                    <div>
-                        <a href="#"
-                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <span class="sr-only">Sign up with Google</span>
-                            <i class="fab fa-google w-5 h-5"></i>
-                        </a>
-                    </div>
-
-                    <div>
-                        <a href="#"
-                            class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                            <span class="sr-only">Sign up with Facebook</span>
-                            <i class="fab fa-facebook w-5 h-5"></i>
-                        </a>
-                    </div>
+                <div class="mt-6">
+                    <a href="login.php"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-indigo-600 bg-white hover:bg-gray-50">
+                        Sign in
+                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    function toggleRoleFields(role) {
+        const teacherFields = document.getElementById('teacher-fields');
+        const studentFields = document.getElementById('student-fields');
+
+        teacherFields.style.display = role === 'teacher' ? 'block' : 'none';
+        studentFields.style.display = role === 'student' ? 'block' : 'none';
+
+        // Update required attributes
+        const bioInput = document.getElementById('bio');
+        const specializationInput = document.getElementById('specialization');
+        const educationLevelInput = document.getElementById('education_level');
+
+        if (role === 'teacher') {
+            bioInput.required = true;
+            specializationInput.required = true;
+            educationLevelInput.required = false;
+        } else if (role === 'student') {
+            bioInput.required = false;
+            specializationInput.required = false;
+            educationLevelInput.required = true;
+        } else {
+            bioInput.required = false;
+            specializationInput.required = false;
+            educationLevelInput.required = false;
+        }
+    }
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

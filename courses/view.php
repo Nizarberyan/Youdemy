@@ -2,11 +2,12 @@
 require_once '../config/database.php';
 require_once '../classes/Course.php';
 require_once '../classes/User.php';
+require_once '../classes/Auth.php';
 
 session_start();
 
 $course = new Course();
-$user = new User();
+$auth = new Auth();
 
 $courseId = $_GET['id'] ?? null;
 if (!$courseId) {
@@ -29,7 +30,8 @@ if (isset($_SESSION['user_id'])) {
     }
 }
 
-$teacher = $user->getById($courseData['teacher_id']);
+// Get teacher data using the Course class's getById method which already includes teacher info
+$teacher = $courseData;
 $curriculum = $course->getCurriculum($courseId);
 $reviews = $course->getReviews($courseId);
 $avgRating = $course->getAverageRating($courseId);

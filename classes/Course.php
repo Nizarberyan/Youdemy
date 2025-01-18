@@ -13,6 +13,35 @@ class Course
     public function create($data)
     {
         try {
+            // First verify that the teacher exists in the teachers table
+            $checkTeacherQuery = "SELECT user_id FROM teachers WHERE user_id = :teacher_id";
+            $stmt = $this->db->prepare($checkTeacherQuery);
+            $stmt->execute(['teacher_id' => $data['teacher_id']]);
+
+            if (!$stmt->fetch()) {
+                // If teacher doesn't exist in teachers table, create the record
+                $createTeacherQuery = "INSERT INTO teachers (user_id) VALUES (:teacher_id)";
+                $stmt = $this->db->prepare($createTeacherQuery);
+                $stmt->execute(['teacher_id' => $data['teacher_id']]);
+            }
+
+            // Handle thumbnail path - store only filename in database
+            $thumbnail = null;
+            if (!empty($data['thumbnail'])) {
+                // Remove any directory path prefixes
+                $thumbnail = basename($data['thumbnail']);
+
+                // Move the uploaded file to the correct location if it exists
+                $sourcePath = $_FILES['thumbnail']['tmp_name'];
+                if (file_exists($sourcePath)) {
+                    $targetDir = dirname(__DIR__) . '/Admin/assets/images/uploads/courses/';
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0777, true);
+                    }
+                    move_uploaded_file($sourcePath, $targetDir . $thumbnail);
+                }
+            }
+
             $query = "INSERT INTO courses (teacher_id, category_id, title, description, price, level, status, thumbnail) 
                       VALUES (:teacher_id, :category_id, :title, :description, :price, :level, :status, :thumbnail)";
 
@@ -25,7 +54,7 @@ class Course
                 'price' => $data['price'],
                 'level' => $data['level'],
                 'status' => $data['status'] ?? 'draft',
-                'thumbnail' => $data['thumbnail'] ?? null
+                'thumbnail' => $thumbnail
             ]);
 
             if ($stmt->rowCount() > 0) {
@@ -58,16 +87,39 @@ class Course
     }
 
     // Update course
-    public function update($id, $data)
+    public function update($id, $data, $teacherId = null)
     {
         try {
-            // If only status is being updated (admin action)
+            // If only status is being updated
             if (count($data) === 1 && isset($data['status'])) {
                 $query = "UPDATE {$this->table} SET status = :status WHERE id = :id";
+                if ($teacherId !== null) {
+                    $query .= " AND teacher_id = :teacher_id";
+                }
+
                 $stmt = $this->db->prepare($query);
                 $stmt->bindParam(':status', $data['status']);
                 $stmt->bindParam(':id', $id);
+                if ($teacherId !== null) {
+                    $stmt->bindParam(':teacher_id', $teacherId);
+                }
                 return $stmt->execute();
+            }
+
+            // Handle thumbnail path - store only filename in database
+            if (!empty($data['thumbnail'])) {
+                // Remove any directory path prefixes
+                $data['thumbnail'] = basename($data['thumbnail']);
+
+                // Move the uploaded file to the correct location if it exists
+                $sourcePath = $_FILES['thumbnail']['tmp_name'];
+                if (file_exists($sourcePath)) {
+                    $targetDir = dirname(__DIR__) . '/admin/assets/images/uploads/courses/';
+                    if (!is_dir($targetDir)) {
+                        mkdir($targetDir, 0777, true);
+                    }
+                    move_uploaded_file($sourcePath, $targetDir . $data['thumbnail']);
+                }
             }
 
             // Full course update (teacher action)
@@ -185,15 +237,25 @@ class Course
     // Get courses by teacher
     public function getByTeacher($teacher_id)
     {
-        $query = "SELECT * FROM {$this->table} WHERE teacher_id = :teacher_id ORDER BY created_at DESC";
         try {
+            $query = "SELECT c.*, cat.name as category_name,
+                     (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as enrollment_count,
+                     u.first_name, u.last_name,
+                     CONCAT(u.first_name, ' ', u.last_name) as teacher_name
+                     FROM {$this->table} c
+                     LEFT JOIN categories cat ON c.category_id = cat.id
+                     LEFT JOIN teachers t ON c.teacher_id = t.user_id
+                     LEFT JOIN users u ON t.user_id = u.id
+                     WHERE c.teacher_id = :teacher_id 
+                     ORDER BY c.created_at DESC";
+
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':teacher_id', $teacher_id);
+            $stmt->bindValue(':teacher_id', $teacher_id, PDO::PARAM_INT);
             $stmt->execute();
-            return $stmt->fetchAll();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Error getting teacher courses: " . $e->getMessage());
-            return false;
+            return [];
         }
     }
 
@@ -217,30 +279,40 @@ class Course
     // Count total courses
     public function countAll($filters = [])
     {
-        $query = "SELECT COUNT(*) as total FROM {$this->table} WHERE 1=1";
-        $params = [];
-
-        if (!empty($filters['category_id'])) {
-            $query .= " AND category_id = :category_id";
-            $params[':category_id'] = $filters['category_id'];
-        }
-
-        if (!empty($filters['teacher_id'])) {
-            $query .= " AND teacher_id = :teacher_id";
-            $params[':teacher_id'] = $filters['teacher_id'];
-        }
-
         try {
+            $query = "SELECT COUNT(*) as total FROM {$this->table} c WHERE 1=1";
+            $params = [];
+
+            if (!empty($filters['category_id'])) {
+                $query .= " AND c.category_id = :category_id";
+                $params[':category_id'] = $filters['category_id'];
+            }
+
+            if (!empty($filters['status'])) {
+                $query .= " AND c.status = :status";
+                $params[':status'] = $filters['status'];
+            }
+
+            if (!empty($filters['teacher_id'])) {
+                $query .= " AND c.teacher_id = :teacher_id";
+                $params[':teacher_id'] = $filters['teacher_id'];
+            }
+
+            if (!empty($filters['search'])) {
+                $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
+                $params[':search'] = "%" . $filters['search'] . "%";
+            }
+
             $stmt = $this->db->prepare($query);
             foreach ($params as $key => &$value) {
-                $stmt->bindParam($key, $value);
+                $stmt->bindValue($key, $value);
             }
             $stmt->execute();
-            $result = $stmt->fetch();
-            return $result['total'];
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int)$result['total'];
         } catch (PDOException $e) {
             error_log("Error counting courses: " . $e->getMessage());
-            return false;
+            return 0;
         }
     }
 
@@ -496,6 +568,55 @@ class Course
         } catch (PDOException $e) {
             error_log("Error getting enrolled courses: " . $e->getMessage());
             return [];
+        }
+    }
+
+    public function addLesson($sectionId, $data)
+    {
+        try {
+            $query = "INSERT INTO course_lessons (section_id, title, content_type, content, duration, sort_order) 
+                      VALUES (:section_id, :title, :content_type, :content, :duration, :sort_order)";
+
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([
+                'section_id' => $sectionId,
+                'title' => $data['title'],
+                'content_type' => $data['content_type'],
+                'content' => $data['content'],
+                'duration' => $data['duration'] ?? null,
+                'sort_order' => $data['sort_order'] ?? 0
+            ]);
+
+            return $this->db->lastInsertId();
+        } catch (PDOException $e) {
+            error_log("Error adding lesson: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function updateLesson($lessonId, $data)
+    {
+        try {
+            $query = "UPDATE course_lessons 
+                      SET title = :title,
+                          content_type = :content_type,
+                          content = :content,
+                          duration = :duration,
+                          sort_order = :sort_order
+                      WHERE id = :id";
+
+            $stmt = $this->db->prepare($query);
+            return $stmt->execute([
+                'id' => $lessonId,
+                'title' => $data['title'],
+                'content_type' => $data['content_type'],
+                'content' => $data['content'],
+                'duration' => $data['duration'] ?? null,
+                'sort_order' => $data['sort_order'] ?? 0
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error updating lesson: " . $e->getMessage());
+            return false;
         }
     }
 }
