@@ -210,31 +210,31 @@ require_once '../../includes/header.php';
         };
 
         if (confirm(confirmMessages[action])) {
-            fetch('list.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: action,
-                        course_id: courseId
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert('Error performing action');
-                    }
-                });
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.style.display = 'none';
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = action;
+
+            const courseIdInput = document.createElement('input');
+            courseIdInput.type = 'hidden';
+            courseIdInput.name = 'course_id';
+            courseIdInput.value = courseId;
+
+            form.appendChild(actionInput);
+            form.appendChild(courseIdInput);
+            document.body.appendChild(form);
+            form.submit();
         }
     }
 
     function applyFilters() {
         const status = document.getElementById('statusFilter').value;
         const search = document.getElementById('searchInput').value;
-        window.location.href = `list.php?status=${status}&search=${encodeURIComponent(search)}`;
+        window.location.href = `view.php?status=${status}&search=${encodeURIComponent(search)}`;
     }
 </script>
 

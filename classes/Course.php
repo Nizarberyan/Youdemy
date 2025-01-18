@@ -60,19 +60,28 @@ class Course
     // Update course
     public function update($id, $data)
     {
-        $query = "UPDATE {$this->table} 
-                 SET title = :title,
-                     description = :description,
-                     price = :price,
-                     level = :level,
-                     status = :status,
-                     category_id = :category_id,
-                     thumbnail = :thumbnail
-                 WHERE id = :id AND teacher_id = :teacher_id";
-
         try {
-            $stmt = $this->db->prepare($query);
+            // If only status is being updated (admin action)
+            if (count($data) === 1 && isset($data['status'])) {
+                $query = "UPDATE {$this->table} SET status = :status WHERE id = :id";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(':status', $data['status']);
+                $stmt->bindParam(':id', $id);
+                return $stmt->execute();
+            }
 
+            // Full course update (teacher action)
+            $query = "UPDATE {$this->table} 
+                     SET title = :title,
+                         description = :description,
+                         price = :price,
+                         level = :level,
+                         status = :status,
+                         category_id = :category_id,
+                         thumbnail = :thumbnail
+                     WHERE id = :id AND teacher_id = :teacher_id";
+
+            $stmt = $this->db->prepare($query);
             $stmt->bindParam(':title', $data['title']);
             $stmt->bindParam(':description', $data['description']);
             $stmt->bindParam(':price', $data['price']);
