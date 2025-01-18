@@ -129,5 +129,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Contact
 
-Your Name - nizarberiane@proton.me
+Nizar Beriane - nizarberiane@proton.me
 Project Link: https://github.com/Nizarberyan/youdemy
