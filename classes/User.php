@@ -123,5 +123,57 @@ abstract class User
         }
     }
 
+    public function countAll($role = null)
+    {
+        $query = "SELECT COUNT(*) as total FROM users";
+        $params = [];
+
+        if ($role) {
+            $query .= " WHERE role = :role";
+            $params[':role'] = $role;
+        }
+
+        try {
+            $stmt = $this->db->prepare($query);
+            foreach ($params as $key => &$value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int)$result['total'];
+        } catch (PDOException $e) {
+            error_log("Error counting users: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    public function getAll($role = null, $status = null)
+    {
+        $query = "SELECT * FROM users WHERE 1=1";
+        $params = [];
+
+        if ($role) {
+            $query .= " AND role = :role";
+            $params[':role'] = $role;
+        }
+
+        if ($status) {
+            $query .= " AND status = :status";
+            $params[':status'] = $status;
+        }
+
+        try {
+            $stmt = $this->db->prepare($query);
+            foreach ($params as $key => &$value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting users: " . $e->getMessage());
+            return [];
+        }
+    }
+
     // Other common methods...
 }
