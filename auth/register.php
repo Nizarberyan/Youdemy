@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($auth->register($userData)) {
             // Auto login after registration
             $auth->login($userData['email'], $userData['password']);
-            header('Location: /');
+            header('Location: ../index.php');
             exit;
         } else {
             $error = "Registration failed";
@@ -135,9 +135,9 @@ require_once '../includes/header.php';
                         class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                     <label for="terms" class="ml-2 block text-sm text-gray-900">
                         I agree to the
-                        <a href="/terms" class="text-indigo-600 hover:text-indigo-500">Terms</a>
+                        <a href="#" class="text-indigo-600 hover:text-indigo-500">Terms</a>
                         and
-                        <a href="/privacy" class="text-indigo-600 hover:text-indigo-500">Privacy Policy</a>
+                        <a href="#" class="text-indigo-600 hover:text-indigo-500">Privacy Policy</a>
                     </label>
                 </div>
 
@@ -163,7 +163,7 @@ require_once '../includes/header.php';
 
                 <div class="mt-6 grid grid-cols-2 gap-3">
                     <div>
-                        <a href="/auth/google"
+                        <a href="#"
                             class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                             <span class="sr-only">Sign up with Google</span>
                             <i class="fab fa-google w-5 h-5"></i>
@@ -171,7 +171,7 @@ require_once '../includes/header.php';
                     </div>
 
                     <div>
-                        <a href="/auth/facebook"
+                        <a href="#"
                             class="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
                             <span class="sr-only">Sign up with Facebook</span>
                             <i class="fab fa-facebook w-5 h-5"></i>

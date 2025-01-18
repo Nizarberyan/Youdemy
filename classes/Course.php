@@ -294,4 +294,213 @@ class Course
             return [];
         }
     }
+
+    public function isStudentEnrolled($studentId, $courseId)
+    {
+        $query = "SELECT COUNT(*) as count FROM enrollments 
+                  WHERE student_id = :student_id AND course_id = :course_id";
+
+        try {
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':student_id', $studentId);
+            $stmt->bindParam(':course_id', $courseId);
+            $stmt->execute();
+            $result = $stmt->fetch();
+            return $result['count'] > 0;
+        } catch (PDOException $e) {
+            error_log("Error checking enrollment: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function getStudentProgress($studentId, $courseId)
+    {
+        $query = "SELECT 
+            (COUNT(DISTINCT cl.id) * 100 / (SELECT COUNT(*) FROM course_lessons WHERE course_id = :course_id)) as progress
+            FROM course_lessons cl
+            LEFT JOIN lesson_progress lp ON cl.id = lp.lesson_id AND lp.student_id = :student_id
+            WHERE cl.course_id = :course_id AND lp.completed = 1";
+
+        try {
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':student_id', $studentId);
+            $stmt->bindParam(':course_id', $courseId);
+            $stmt->execute();
+            $result = $stmt->fetch();
+            return round($result['progress'] ?? 0);
+        } catch (PDOException $e) {
+            error_log("Error getting progress: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    public function getCurriculum($courseId)
+    {
+        $query = "SELECT cs.*, cl.id as lesson_id, cl.title as lesson_title, 
+                  cl.duration, cl.sort_order as lesson_order
+                  FROM course_sections cs
+                  LEFT JOIN course_lessons cl ON cs.id = cl.section_id
+                  WHERE cs.course_id = :course_id
+                  ORDER BY cs.sort_order, cl.sort_order";
+
+        try {
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':course_id', $courseId);
+            $stmt->execute();
+            $results = $stmt->fetchAll();
+
+            $curriculum = [];
+            foreach ($results as $row) {
+                if (!isset($curriculum[$row['id']])) {
+                    $curriculum[$row['id']] = [
+                        'title' => $row['title'],
+                        'lessons' => []
+                    ];
+                }
+                if ($row['lesson_id']) {
+                    $curriculum[$row['id']]['lessons'][] = [
+                        'id' => $row['lesson_id'],
+                        'title' => $row['lesson_title'],
+                        'duration' => $row['duration']
+                    ];
+                }
+            }
+            return array_values($curriculum);
+        } catch (PDOException $e) {
+            error_log("Error getting curriculum: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getReviews($courseId)
+    {
+        $query = "SELECT r.*, 
+                  CONCAT(u.first_name, ' ', u.last_name) as user_name,
+                  u.profile_image as user_image
+                  FROM reviews r
+                  JOIN users u ON r.student_id = u.id
+                  WHERE r.course_id = :course_id
+                  ORDER BY r.created_at DESC";
+
+        try {
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':course_id', $courseId);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Error getting reviews: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function getAverageRating($courseId)
+    {
+        $query = "SELECT AVG(rating) as avg_rating 
+                  FROM reviews 
+                  WHERE course_id = :course_id";
+
+        try {
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':course_id', $courseId);
+            $stmt->execute();
+            $result = $stmt->fetch();
+            return round($result['avg_rating'] ?? 0, 1);
+        } catch (PDOException $e) {
+            error_log("Error getting average rating: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    public function countEnrolledCourses($studentId, $filters = [])
+    {
+        $query = "SELECT COUNT(DISTINCT c.id) as total
+                  FROM courses c
+                  JOIN enrollments e ON c.id = e.course_id
+                  WHERE e.student_id = :student_id";
+
+        $params = [':student_id' => $studentId];
+
+        if (!empty($filters['search'])) {
+            $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
+            $params[':search'] = "%{$filters['search']}%";
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'completed') {
+                $query .= " AND (SELECT COUNT(*) FROM lesson_progress lp 
+                           JOIN course_lessons cl ON lp.lesson_id = cl.id 
+                           WHERE cl.course_id = c.id AND lp.student_id = :student_id2 
+                           AND lp.completed = 1) = 
+                           (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id)";
+                $params[':student_id2'] = $studentId;
+            }
+        }
+
+        try {
+            $stmt = $this->db->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
+            return $stmt->fetch()['total'];
+        } catch (PDOException $e) {
+            error_log("Error counting enrolled courses: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    public function getEnrolledCourses($studentId, $filters = [], $limit = null, $offset = null)
+    {
+        $query = "SELECT DISTINCT c.*, u.first_name, u.last_name,
+                  CONCAT(u.first_name, ' ', u.last_name) as teacher_name
+                  FROM courses c
+                  JOIN enrollments e ON c.id = e.course_id
+                  JOIN users u ON c.teacher_id = u.id
+                  WHERE e.student_id = :student_id";
+
+        $params = [':student_id' => $studentId];
+
+        if (!empty($filters['search'])) {
+            $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
+            $params[':search'] = "%{$filters['search']}%";
+        }
+
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'completed') {
+                $query .= " AND (SELECT COUNT(*) FROM lesson_progress lp 
+                           JOIN course_lessons cl ON lp.lesson_id = cl.id 
+                           WHERE cl.course_id = c.id AND lp.student_id = :student_id2 
+                           AND lp.completed = 1) = 
+                           (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id)";
+                $params[':student_id2'] = $studentId;
+            }
+        }
+
+        $query .= " ORDER BY e.enrolled_at DESC";
+
+        if ($limit !== null) {
+            $query .= " LIMIT :limit";
+            if ($offset !== null) {
+                $query .= " OFFSET :offset";
+            }
+        }
+
+        try {
+            $stmt = $this->db->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            if ($limit !== null) {
+                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                if ($offset !== null) {
+                    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+                }
+            }
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Error getting enrolled courses: " . $e->getMessage());
+            return [];
+        }
+    }
 }

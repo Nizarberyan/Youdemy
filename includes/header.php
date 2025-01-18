@@ -67,8 +67,8 @@ $userRole = $_SESSION['user_role'] ?? null;
                         </div>
                     <?php else: ?>
                         <div class="flex space-x-4">
-                            <a href="/auth/login.php" class="text-gray-500 hover:text-gray-700">Login</a>
-                            <a href="/auth/register.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Sign up</a>
+                            <a href="auth/login.php" class="text-gray-500 hover:text-gray-700">Login</a>
+                            <a href="auth/register.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Sign up</a>
                         </div>
                     <?php endif; ?>
                 </div>

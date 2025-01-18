@@ -2,8 +2,19 @@
 require_once 'config/database.php';
 require_once 'classes/Course.php';
 require_once 'classes/Category.php';
+require_once 'classes/Auth.php';
 
 session_start();
+
+
+// Check if user is already logged in and trying to access login/register
+if (isset($_SESSION['user_id'])) {
+    $currentPage = basename($_SERVER['PHP_SELF']);
+    if (in_array($currentPage, ['login.php', 'register.php'])) {
+        header('Location: ../index.php');
+        exit;
+    }
+}
 
 $course = new Course();
 $category = new Category();
@@ -39,6 +50,11 @@ require_once 'includes/header.php';
                         <div class="mt-3 rounded-md shadow sm:mt-0 sm:ml-3">
                             <a href="auth/register.php" class="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600 md:py-4 md:text-lg md:px-10">
                                 Join for Free
+                            </a>
+                        </div>
+                        <div class="mt-3 sm:mt-0 sm:ml-3">
+                            <a href="auth/login.php" class="w-full flex items-center justify-center px-8 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 md:py-4 md:text-lg md:px-10">
+                                Sign In
                             </a>
                         </div>
                     <?php endif; ?>

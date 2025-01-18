@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     try {
         if ($auth->login($email, $password, $remember)) {
-            $redirect = $_SESSION['redirect_url'] ?? '/';
+            $redirect = $_SESSION['redirect_url'] ?? '../index.php';
             unset($_SESSION['redirect_url']);
             header('Location: ' . $redirect);
             exit;
