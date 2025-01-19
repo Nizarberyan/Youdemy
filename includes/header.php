@@ -2,7 +2,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
+// die(var_dump($_SESSION['user_role']));
 $currentPage = basename($_SERVER['PHP_SELF']);
 $isLoggedIn = isset($_SESSION['user_id']);
 $userRole = $_SESSION['user_role'] ?? null;
@@ -35,12 +35,12 @@ $userRole = $_SESSION['user_role'] ?? null;
                             Courses
                         </a>
                         <?php if ($isLoggedIn && $userRole === 'teacher'): ?>
-                            <a href="../teacher/index.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/teacher') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            <a href="teacher/index.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/teacher') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Teacher Dashboard
                             </a>
                         <?php endif; ?>
                         <?php if ($isLoggedIn && $userRole === 'admin'): ?>
-                            <a href="../admin/index.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/admin') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                            <a href="admin/index.php" class="<?= strpos($_SERVER['REQUEST_URI'], '/admin') !== false ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' ?> inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Admin Dashboard
                             </a>
                         <?php endif; ?>
@@ -48,7 +48,7 @@ $userRole = $_SESSION['user_role'] ?? null;
                 </div>
                 <div class="hidden sm:ml-6 sm:flex sm:items-center">
                     <?php if ($isLoggedIn): ?>
-                        <a href="../auth/logout.php" class="mr-4 text-gray-500 hover:text-gray-700">Logout</a>
+                        <a href="auth/logout.php" class="mr-4 text-gray-500 hover:text-gray-700">Logout</a>
                         <div class="ml-3 relative">
                             <div>
                                 <button type="button" onclick="toggleDropdown()" class="flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" id="user-menu-button" aria-expanded="false" aria-haspopup="true">
@@ -68,8 +68,8 @@ $userRole = $_SESSION['user_role'] ?? null;
                         </div>
                     <?php else: ?>
                         <div class="flex space-x-4">
-                            <a href="../auth/login.php" class="text-gray-500 hover:text-gray-700">Login</a>
-                            <a href="../auth/register.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Sign up</a>
+                            <a href="auth/login.php" class="text-gray-500 hover:text-gray-700">Login</a>
+                            <a href="auth/register.php" class="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">Sign up</a>
                         </div>
                     <?php endif; ?>
                 </div>

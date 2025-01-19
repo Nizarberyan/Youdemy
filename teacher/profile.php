@@ -4,6 +4,7 @@ require_once '../config/database.php';
 require_once '../classes/Auth.php';
 require_once '../classes/User.php';
 require_once '../classes/Teacher.php';
+require_once '../classes/Tags.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
@@ -42,53 +43,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $fileName = uniqid('profile_') . '.' . $fileExtension;
-            $profileImage = 'assets/images/uploads/profiles/' . $fileName;
+            $newImagePath = 'assets/images/uploads/profiles/' . $fileName;
 
             if (!move_uploaded_file($_FILES['profile_image']['tmp_name'], $uploadDir . $fileName)) {
                 throw new Exception("Error uploading profile image");
             }
-        }
 
-        // Update user data
-        $updateData = [
-            'first_name' => $_POST['first_name'],
-            'last_name' => $_POST['last_name'],
-            'email' => $_POST['email'],
-            'profile_image' => $profileImage
-        ];
+            // Update user data
+            $updateData = [
+                'first_name' => $_POST['first_name'],
+                'last_name' => $_POST['last_name'],
+                'email' => $_POST['email'],
+                'profile_image' => $newImagePath
+            ];
 
-        // Handle password update if provided
-        if (!empty($_POST['password'])) {
-            if ($_POST['password'] !== $_POST['password_confirm']) {
-                throw new Exception("Passwords do not match");
+            // Handle password update if provided
+            if (!empty($_POST['password'])) {
+                if ($_POST['password'] !== $_POST['password_confirm']) {
+                    throw new Exception("Passwords do not match");
+                }
+                $updateData['password'] = password_hash($_POST['password'], PASSWORD_DEFAULT);
             }
-            $updateData['password'] = password_hash($_POST['password'], PASSWORD_DEFAULT);
+
+            // Update base user data
+            if (!$teacher->update($_SESSION['user_id'], $updateData)) {
+                throw new Exception("Error updating user profile");
+            }
+
+            // Update teacher-specific data
+            $teacherUpdateData = [
+                'bio' => $_POST['bio'],
+                'specialization' => $_POST['expertise']
+            ];
+
+            if (!$teacher->updateSpecificData($teacherUpdateData)) {
+                throw new Exception("Error updating teacher profile");
+            }
         }
 
-        // Update base user data
-        if (!$teacher->update($_SESSION['user_id'], $updateData)) {
-            throw new Exception("Error updating user profile");
-        }
+        // Handle tags
+        $tags = new Tags();
+        $allTags = $tags->getAll();
+        $teacherTags = $tags->getTeacherTags($_SESSION['user_id']);
+        $teacherTagIds = array_column($teacherTags, 'id');
 
-        // Update teacher-specific data
-        $teacherUpdateData = [
-            'bio' => $_POST['bio'],
-            'specialization' => $_POST['expertise']
-        ];
+        if (isset($_POST['tags'])) {
+            // Remove all existing tags
+            foreach ($teacherTags as $tag) {
+                $tags->removeTeacherTag($_SESSION['user_id'], $tag['id']);
+            }
 
-        if (!$teacher->updateSpecificData($teacherUpdateData)) {
-            throw new Exception("Error updating teacher profile");
+            // Add new tags
+            foreach ($_POST['tags'] as $tagId) {
+                $tags->addTeacherTag($_SESSION['user_id'], $tagId);
+            }
         }
 
         $success = "Profile updated successfully";
         $userData = $teacher->getById($_SESSION['user_id']);
         $teacherData = $teacher->getSpecificData();
+
+        // Update session variable
+        $_SESSION['user_profile_image'] = $newImagePath;
     } catch (Exception $e) {
         $error = $e->getMessage();
     }
 }
 
-require_once '../includes/header.php';
+// When displaying the form, get existing tags
+$tags = new Tags();
+$allTags = $tags->getAll();
+$teacherTags = $tags->getTeacherTags($_SESSION['user_id']);
+$teacherTagIds = array_column($teacherTags, 'id');
+
+require_once 'teacherHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">
@@ -128,6 +156,7 @@ require_once '../includes/header.php';
                                             </label>
                                         </div>
                                         <p class="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                                        <p id="selected-file" class="text-sm text-gray-600 mt-2"></p>
                                     </div>
                                 </div>
                             </div>
@@ -186,6 +215,23 @@ require_once '../includes/header.php';
                                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             </div>
                         </div>
+
+                        <div class="mt-4">
+                            <label for="tags" class="block text-sm font-medium text-gray-700">Your Tags</label>
+                            <p class="text-sm text-gray-500">Select the tags that best describe your expertise</p>
+                            <div class="mt-2 space-y-2">
+                                <?php foreach ($allTags as $tag): ?>
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="tags[]" value="<?= $tag['id'] ?>"
+                                            <?= in_array($tag['id'], $teacherTagIds) ? 'checked' : '' ?>
+                                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                        <label class="ml-2 text-sm text-gray-700">
+                                            <?= htmlspecialchars($tag['name']) ?>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-6 flex justify-end">
@@ -202,6 +248,7 @@ require_once '../includes/header.php';
 <script>
     const profileInput = document.getElementById('profile_image');
     const dropZone = profileInput.closest('div.border-dashed');
+    const selectedFile = document.getElementById('selected-file');
 
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
@@ -235,6 +282,14 @@ require_once '../includes/header.php';
         const files = dt.files;
         profileInput.files = files;
     }
+
+    profileInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            selectedFile.textContent = `Selected: ${this.files[0].name}`;
+        } else {
+            selectedFile.textContent = '';
+        }
+    });
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

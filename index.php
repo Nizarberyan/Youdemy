@@ -14,7 +14,7 @@ session_start();
 //         header('Location: ../index.php');
 //         exit;
 //     }
-// }
+    // }
 
 $course = new Course();
 $category = new Category();

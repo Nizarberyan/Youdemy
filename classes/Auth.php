@@ -63,7 +63,7 @@ class Auth
         }
     }
 
-    public function login($email, $password)
+    public function login($email, $password, $remember = false)
     {
         try {
             $query = "SELECT * FROM users WHERE email = :email";
@@ -77,8 +77,10 @@ class Auth
                 }
 
                 $_SESSION['user_id'] = $user['id'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['name'] = $user['first_name'] . ' ' . $user['last_name'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_profile_image'] = $user['profile_image'];
 
                 return ['success' => true, 'role' => $user['role']];
             }
@@ -116,7 +118,7 @@ class Auth
     public function requireLogin()
     {
         if (!$this->isLoggedIn()) {
-            header('Location: /auth/login.php');
+            header('Location: ../auth/login.php');
             exit();
         }
     }
@@ -124,7 +126,7 @@ class Auth
     public function requireRole($role)
     {
         $this->requireLogin();
-        if ($_SESSION['role'] !== $role && $_SESSION['role'] !== 'admin') {
+        if ($_SESSION['user_role'] !== $role) {
             header('Location: /403.php');
             exit();
         }

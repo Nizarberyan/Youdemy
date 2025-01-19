@@ -86,4 +86,47 @@ class AdminUser extends User
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([$userId]);
     }
+
+    public function getAllExcept($userId, $role = null, $status = null, $limit = null, $offset = null)
+    {
+        $sql = "SELECT * FROM users WHERE id != :userId";
+        $params = [':userId' => $userId];
+
+        if ($role) {
+            $sql .= " AND role = :role";
+            $params[':role'] = $role;
+        }
+        if ($status) {
+            $sql .= " AND status = :status";
+            $params[':status'] = $status;
+        }
+
+        if ($limit !== null) {
+            $sql .= " LIMIT " . intval($limit);
+
+            if ($offset !== null) {
+                $sql .= " OFFSET " . intval($offset);
+            }
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function countAllExcept($userId, $role = null)
+    {
+        $sql = "SELECT COUNT(*) as count FROM users WHERE id != ?";
+        $params = [$userId];
+
+        if ($role) {
+            $sql .= " AND role = ?";
+            $params[] = $role;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['count'];
+    }
 }

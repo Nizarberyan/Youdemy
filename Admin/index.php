@@ -128,7 +128,9 @@ require_once 'adminHeader.php';
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center space-x-4">
                                             <div class="flex-shrink-0">
-                                                <img class="h-8 w-8 rounded-full" src="<?= $teacher['profile_image'] ?? '../assets/images/default-avatar.png' ?>" alt="">
+                                                <img class="h-8 w-8 rounded-full"
+                                                    src="../<?= $teacher['profile_image'] ?? 'assets/images/default-avatar.png' ?>"
+                                                    alt="">
                                             </div>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-medium text-gray-900 truncate">
@@ -144,7 +146,7 @@ require_once 'adminHeader.php';
                                                     <input type="hidden" name="id" value="<?= $teacher['id'] ?>">
                                                     <button type="submit"
                                                         onclick="return confirm('Are you sure you want to approve this teacher?')"
-                                                        class="text-green-600 hover:text-green-900">
+                                                        class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm">
                                                         Approve
                                                     </button>
                                                 </form>
@@ -154,7 +156,7 @@ require_once 'adminHeader.php';
                                                     <input type="hidden" name="id" value="<?= $teacher['id'] ?>">
                                                     <button type="submit"
                                                         onclick="return confirm('Are you sure you want to reject this teacher?')"
-                                                        class="text-red-600 hover:text-red-900">
+                                                        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">
                                                         Reject
                                                     </button>
                                                 </form>

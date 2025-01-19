@@ -6,6 +6,7 @@ require_once '../classes/Course.php';
 require_once '../classes/User.php';
 require_once '../classes/Teacher.php';
 
+
 $auth = new Auth();
 $auth->requireRole('teacher');
 
@@ -25,7 +26,7 @@ foreach ($teacherCourses as $courseData) {
     $totalRevenue += $courseData['price'] * $courseData['enrollment_count'];
 }
 
-require_once '../includes/header.php';
+require_once 'teacherHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">

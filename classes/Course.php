@@ -619,4 +619,76 @@ class Course
             return false;
         }
     }
+
+    public function addTag($courseId, $tagId)
+    {
+        try {
+            $query = "INSERT INTO course_tags (course_id, tag_id) VALUES (:course_id, :tag_id)";
+            $stmt = $this->db->prepare($query);
+            return $stmt->execute([
+                'course_id' => $courseId,
+                'tag_id' => $tagId
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error adding course tag: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function removeTag($courseId, $tagId)
+    {
+        try {
+            $query = "DELETE FROM course_tags WHERE course_id = :course_id AND tag_id = :tag_id";
+            $stmt = $this->db->prepare($query);
+            return $stmt->execute([
+                'course_id' => $courseId,
+                'tag_id' => $tagId
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error removing course tag: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function getCourseTags($courseId)
+    {
+        try {
+            $query = "SELECT t.* FROM tags t 
+                     INNER JOIN course_tags ct ON t.id = ct.tag_id 
+                     WHERE ct.course_id = :course_id";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute(['course_id' => $courseId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting course tags: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    public function addBulkTags($courseId, array $tagIds)
+    {
+        try {
+            // Begin transaction
+            $this->db->beginTransaction();
+
+            $query = "INSERT INTO course_tags (course_id, tag_id) VALUES (:course_id, :tag_id)";
+            $stmt = $this->db->prepare($query);
+
+            foreach ($tagIds as $tagId) {
+                $stmt->execute([
+                    'course_id' => $courseId,
+                    'tag_id' => $tagId
+                ]);
+            }
+
+            // Commit transaction
+            $this->db->commit();
+            return true;
+        } catch (PDOException $e) {
+            // Rollback on error
+            $this->db->rollBack();
+            error_log("Error adding bulk course tags: " . $e->getMessage());
+            return false;
+        }
+    }
 }

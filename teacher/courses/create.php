@@ -1,14 +1,19 @@
 <?php
+session_start();
 require_once '../../config/database.php';
 require_once '../../classes/Auth.php';
 require_once '../../classes/Course.php';
 require_once '../../classes/Category.php';
+require_once '../../classes/Tags.php';
 
 $auth = new Auth();
 $auth->requireRole('teacher');
 
 $category = new Category();
 $categories = $category->getAll();
+
+$tags = new Tags();
+$allTags = $tags->getAll();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $course = new Course();
@@ -40,6 +45,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $courseId = $course->create($courseData);
 
     if ($courseId) {
+        // Add course tags if selected
+        if (isset($_POST['tags']) && is_array($_POST['tags'])) {
+            foreach ($_POST['tags'] as $tagId) {
+                $course->addTag($courseId, $tagId);
+            }
+        }
+
         header('Location: edit.php?id=' . $courseId);
         exit;
     } else {
@@ -47,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-require_once '../../includes/header.php';
+require_once 'teachercourseHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">
@@ -125,10 +137,26 @@ require_once '../../includes/header.php';
                                 </div>
                             </div>
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Course Tags</label>
+                            <p class="text-sm text-gray-500 mb-2">Select tags that best describe your course content</p>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                <?php foreach ($allTags as $tag): ?>
+                                    <div class="flex items-center">
+                                        <input type="checkbox" name="tags[]" value="<?= $tag['id'] ?>"
+                                            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                        <label class="ml-2 text-sm text-gray-700">
+                                            <?= htmlspecialchars($tag['name']) ?>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-6 flex justify-end space-x-3">
-                        <a href="view.php" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <a href="index.php" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             Cancel
                         </a>
                         <button type="submit" class="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">

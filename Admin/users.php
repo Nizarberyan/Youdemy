@@ -64,9 +64,9 @@ $page = max(1, intval($_GET['page'] ?? 1));
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-// Get users list
-$users = $user->getAll($role, $status, $limit, $offset) ?? [];
-$totalUsers = $user->countAll($role) ?? 0;
+// Get users list - exclude current user
+$users = $user->getAllExcept($_SESSION['user_id'], $role, $status, $limit, $offset) ?? [];
+$totalUsers = $user->countAllExcept($_SESSION['user_id'], $role) ?? 0;
 $totalPages = ceil($totalUsers / $limit);
 
 require_once 'adminHeader.php';
@@ -131,8 +131,10 @@ require_once 'adminHeader.php';
                                             <tr>
                                                 <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
                                                     <div class="flex items-center">
-                                                        <div class="h-10 w-10 flex-shrink-0">
-                                                            <img class="h-10 w-10 rounded-full" src="<?= $userData['profile_image'] ?? '../assets/images/default-avatar.png' ?>" alt="">
+                                                        <div class="flex-shrink-0">
+                                                            <img class="h-10 w-10 rounded-full object-cover"
+                                                                src="../<?= $userData['profile_image'] ?? 'assets/images/default-avatar.png' ?>"
+                                                                alt="">
                                                         </div>
                                                         <div class="ml-4">
                                                             <?= htmlspecialchars($userData['first_name'] . ' ' . $userData['last_name']) ?>
