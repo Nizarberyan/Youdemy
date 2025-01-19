@@ -31,6 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $contentPaths = [];
+
+    if (isset($_POST['content_urls']) && is_array($_POST['content_urls'])) {
+        foreach ($_POST['content_urls'] as $url) {
+            if (!empty(trim($url))) {
+                $contentPaths[] = trim($url);
+            }
+        }
+    }
+
     $courseData = [
         'teacher_id' => $_SESSION['user_id'],
         'category_id' => $_POST['category_id'],
@@ -39,13 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'price' => $_POST['price'],
         'level' => $_POST['level'],
         'status' => 'draft',
-        'thumbnail' => $thumbnailPath
+        'thumbnail' => $thumbnailPath,
+        'content_paths' => json_encode($contentPaths)
     ];
 
     $courseId = $course->create($courseData);
 
     if ($courseId) {
-        // Add course tags if selected
         if (isset($_POST['tags']) && is_array($_POST['tags'])) {
             foreach ($_POST['tags'] as $tagId) {
                 $course->addTag($courseId, $tagId);
@@ -139,6 +149,18 @@ require_once 'teachercourseHeader.php';
                         </div>
 
                         <div>
+                            <label class="block text-sm font-medium text-gray-700">Course Content URL</label>
+                            <p class="text-sm text-gray-500 mb-2">Add the URL for your course content (YouTube video, PDF document, etc.)</p>
+                            <div id="content-urls-container">
+                                <div class="mb-2">
+                                    <input type="url" name="content_urls[]"
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                        placeholder="https://example.com/content">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
                             <label class="block text-sm font-medium text-gray-700">Course Tags</label>
                             <p class="text-sm text-gray-500 mb-2">Select tags that best describe your course content</p>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -215,6 +237,12 @@ require_once 'teachercourseHeader.php';
         const fileName = files[0]?.name;
         fileNameDisplay.textContent = fileName ? `Selected file: ${fileName}` : '';
     }
+
+    // Add URL field functionality
+    const addUrlBtn = document.getElementById('add-url-btn');
+    const contentUrlsContainer = document.getElementById('content-urls-container');
+
+    // Remove URL field functionality since we only want one URL
 </script>
 
 <?php require_once '../../includes/footer.php'; ?>

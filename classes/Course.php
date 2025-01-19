@@ -70,7 +70,8 @@ class Course
     // Get course by ID with additional details
     public function getById($id)
     {
-        $query = "SELECT c.*, u.first_name, u.last_name, cat.name as category_name 
+        $query = "SELECT c.*, u.first_name, u.last_name, cat.name as category_name,
+                 (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as student_count 
                  FROM {$this->table} c
                  JOIN users u ON c.teacher_id = u.id
                  JOIN categories cat ON c.category_id = cat.id

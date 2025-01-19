@@ -4,6 +4,11 @@ require_once '../classes/Course.php';
 require_once '../classes/User.php';
 require_once '../classes/Auth.php';
 
+function formatCurrency($amount)
+{
+    return '$' . number_format($amount, 2);
+}
+
 session_start();
 
 $course = new Course();
@@ -30,7 +35,7 @@ if (isset($_SESSION['user_id'])) {
     }
 }
 
-// Get teacher data using the Course class's getById method which already includes teacher info
+
 $teacher = $courseData;
 $curriculum = $course->getCurriculum($courseId);
 $reviews = $course->getReviews($courseId);
@@ -46,7 +51,6 @@ require_once '../includes/header.php';
             <div class="lg:grid lg:grid-cols-2 lg:gap-8 items-center">
                 <div>
                     <h1 class="text-4xl font-bold mb-4"><?= htmlspecialchars($courseData['title']) ?></h1>
-                    <p class="text-xl text-indigo-100 mb-6"><?= htmlspecialchars($courseData['subtitle']) ?></p>
                     <div class="flex items-center space-x-4 mb-6">
                         <div class="flex items-center">
                             <i class="fas fa-star text-yellow-400 mr-1"></i>
@@ -117,106 +121,78 @@ require_once '../includes/header.php';
         <div class="lg:grid lg:grid-cols-3 lg:gap-8">
             <div class="lg:col-span-2">
                 <!-- What you'll learn -->
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-                    <h2 class="text-2xl font-bold mb-4">What you'll learn</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <?php foreach (json_decode($courseData['learning_objectives'], true) as $objective): ?>
-                            <div class="flex items-start">
-                                <i class="fas fa-check text-green-500 mt-1 mr-2"></i>
-                                <span><?= htmlspecialchars($objective) ?></span>
-                            </div>
-                        <?php endforeach; ?>
+                <
+                    <!-- Course Description -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+                        <h2 class="text-2xl font-bold mb-4">Course Description</h2>
+                        <div class="prose max-w-none">
+                            <?= nl2br(htmlspecialchars($courseData['description'])) ?>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Course Description -->
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-                    <h2 class="text-2xl font-bold mb-4">Course Description</h2>
-                    <div class="prose max-w-none">
-                        <?= nl2br(htmlspecialchars($courseData['description'])) ?>
-                    </div>
-                </div>
-
-                <!-- Curriculum -->
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-                    <h2 class="text-2xl font-bold mb-4">Course Content</h2>
-                    <div class="space-y-4">
-                        <?php foreach ($curriculum as $section): ?>
-                            <div class="border rounded-lg">
-                                <div class="p-4 bg-gray-50 rounded-t-lg font-medium">
-                                    <?= htmlspecialchars($section['title']) ?>
-                                </div>
-                                <div class="divide-y">
-                                    <?php foreach ($section['lessons'] as $lesson): ?>
-                                        <div class="p-4 flex items-center justify-between">
-                                            <div class="flex items-center">
-                                                <i class="fas fa-play-circle text-gray-400 mr-2"></i>
-                                                <span><?= htmlspecialchars($lesson['title']) ?></span>
-                                            </div>
-                                            <span class="text-sm text-gray-500"><?= $lesson['duration'] ?></span>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-
-                <!-- Reviews -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-2xl font-bold mb-4">Student Reviews</h2>
-                    <?php if (empty($reviews)): ?>
-                        <p class="text-gray-500">No reviews yet.</p>
-                    <?php else: ?>
-                        <div class="space-y-6">
-                            <?php foreach ($reviews as $review): ?>
-                                <div class="border-b pb-6 last:border-b-0 last:pb-0">
-                                    <div class="flex items-center mb-2">
-                                        <img class="h-10 w-10 rounded-full object-cover mr-4"
-                                            src="../<?= $review['user_image'] ?? 'assets/images/default-avatar.png' ?>"
-                                            alt="<?= htmlspecialchars($review['user_name']) ?>">
-                                        <div>
-                                            <div class="font-medium"><?= htmlspecialchars($review['user_name']) ?></div>
-                                            <div class="flex items-center">
-                                                <?php for ($i = 1; $i <= 5; $i++): ?>
-                                                    <i class="fas fa-star <?= $i <= $review['rating'] ? 'text-yellow-400' : 'text-gray-300' ?>"></i>
-                                                <?php endfor; ?>
-                                            </div>
-                                        </div>
-                                        <div class="ml-auto text-sm text-gray-500">
-                                            <?= formatDate($review['created_at']) ?>
-                                        </div>
+                    <!-- Curriculum -->
+                    <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+                        <h2 class="text-2xl font-bold mb-4">Course Content</h2>
+                        <div class="space-y-4">
+                            <?php foreach ($curriculum as $section): ?>
+                                <div class="border rounded-lg">
+                                    <div class="p-4 bg-gray-50 rounded-t-lg font-medium">
+                                        <?= htmlspecialchars($section['title']) ?>
                                     </div>
-                                    <p class="text-gray-600"><?= nl2br(htmlspecialchars($review['comment'])) ?></p>
+                                    <div class="divide-y">
+                                        <?php foreach ($section['lessons'] as $lesson): ?>
+                                            <div class="p-4 flex items-center justify-between">
+                                                <div class="flex items-center">
+                                                    <i class="fas fa-play-circle text-gray-400 mr-2"></i>
+                                                    <span><?= htmlspecialchars($lesson['title']) ?></span>
+                                                </div>
+                                                <span class="text-sm text-gray-500"><?= $lesson['duration'] ?></span>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
                                 </div>
                             <?php endforeach; ?>
                         </div>
-                    <?php endif; ?>
-                </div>
+                    </div>
+
+                    <!-- Reviews -->
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-2xl font-bold mb-4">Student Reviews</h2>
+                        <?php if (empty($reviews)): ?>
+                            <p class="text-gray-500">No reviews yet.</p>
+                        <?php else: ?>
+                            <div class="space-y-6">
+                                <?php foreach ($reviews as $review): ?>
+                                    <div class="border-b pb-6 last:border-b-0 last:pb-0">
+                                        <div class="flex items-center mb-2">
+                                            <img class="h-10 w-10 rounded-full object-cover mr-4"
+                                                src="../<?= $review['user_image'] ?? 'assets/images/default-avatar.png' ?>"
+                                                alt="<?= htmlspecialchars($review['user_name']) ?>">
+                                            <div>
+                                                <div class="font-medium"><?= htmlspecialchars($review['user_name']) ?></div>
+                                                <div class="flex items-center">
+                                                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                                                        <i class="fas fa-star <?= $i <= $review['rating'] ? 'text-yellow-400' : 'text-gray-300' ?>"></i>
+                                                    <?php endfor; ?>
+                                                </div>
+                                            </div>
+                                            <div class="ml-auto text-sm text-gray-500">
+                                                <?= formatDate($review['created_at']) ?>
+                                            </div>
+                                        </div>
+                                        <p class="text-gray-600"><?= nl2br(htmlspecialchars($review['comment'])) ?></p>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
             </div>
 
-            <!-- Requirements and Target Audience -->
-            <div>
-                <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-                    <h2 class="text-xl font-bold mb-4">Requirements</h2>
-                    <ul class="list-disc list-inside space-y-2 text-gray-600">
-                        <?php foreach (json_decode($courseData['requirements'], true) as $requirement): ?>
-                            <li><?= htmlspecialchars($requirement) ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
 
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-bold mb-4">Who this course is for:</h2>
-                    <ul class="list-disc list-inside space-y-2 text-gray-600">
-                        <?php foreach (json_decode($courseData['target_audience'], true) as $audience): ?>
-                            <li><?= htmlspecialchars($audience) ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            </div>
+
         </div>
     </div>
+</div>
 </div>
 
 <?php require_once '../includes/footer.php'; ?>

@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once '../../config/database.php';
 require_once '../../classes/Auth.php';
 require_once '../../classes/Course.php';
@@ -60,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-require_once '../../includes/header.php';
+require_once 'teachercourseHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">
@@ -148,7 +149,7 @@ require_once '../../includes/header.php';
                             <label class="block text-sm font-medium text-gray-700">Course Thumbnail</label>
                             <?php if ($courseData['thumbnail']): ?>
                                 <div class="mt-2">
-                                    <img src="../../<?= htmlspecialchars($courseData['thumbnail']) ?>"
+                                    <img src="../../assets/images/uploads/courses/<?= htmlspecialchars($courseData['thumbnail']) ?>"
                                         alt="Current thumbnail"
                                         class="h-32 w-32 object-cover rounded-md">
                                 </div>

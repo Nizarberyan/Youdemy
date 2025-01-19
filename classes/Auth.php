@@ -106,7 +106,7 @@ class Auth
         session_destroy();
 
         // Redirect to login page
-        header('Location: /auth/login.php');
+        header('Location: ../../auth/login.php');
         exit();
     }
 
@@ -118,7 +118,7 @@ class Auth
     public function requireLogin()
     {
         if (!$this->isLoggedIn()) {
-            header('Location: ../auth/login.php');
+            header('Location: ../../auth/login.php');
             exit();
         }
     }
@@ -127,7 +127,7 @@ class Auth
     {
         $this->requireLogin();
         if ($_SESSION['user_role'] !== $role) {
-            header('Location: /403.php');
+            header('Location: ../../403.php');
             exit();
         }
     }

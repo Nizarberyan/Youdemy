@@ -137,7 +137,7 @@ require_once '../../includes/header.php';
                                                 <div class="flex items-center">
                                                     <div class="h-10 w-10 flex-shrink-0">
                                                         <img class="h-10 w-10 rounded object-cover"
-                                                            src="../../<?= $courseData['thumbnail'] ?? 'assets/images/course-default.png' ?>"
+                                                            src="../../assets/images/uploads/courses/<?= $courseData['thumbnail'] ?? 'assets/images/course-default.png' ?>"
                                                             alt="">
                                                     </div>
                                                     <div class="ml-4">
