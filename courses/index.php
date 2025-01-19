@@ -90,7 +90,7 @@ require_once '../includes/header.php';
                             <div class="bg-white rounded-lg shadow overflow-hidden">
                                 <div class="relative pb-2/3">
                                     <img class="absolute h-full w-full object-cover"
-                                        src="../<?= $course['thumbnail'] ?? 'assets/images/course-default.png' ?>"
+                                        src="../assets/images/uploads/courses/<?= $course['thumbnail'] ?? 'course-default.png' ?>"
                                         alt="<?= htmlspecialchars($course['title']) ?>">
                                 </div>
                                 <div class="p-4">

@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $_SESSION['error'] = 'Failed to update course';
         }
-        header('Location: view.php');
+        header('Location: ../../courses/view.php');
         exit;
     }
 }

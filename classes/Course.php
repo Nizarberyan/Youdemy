@@ -365,20 +365,20 @@ class Course
 
     public function isStudentEnrolled($studentId, $courseId)
     {
-        $query = "SELECT COUNT(*) as count FROM enrollments 
-                  WHERE student_id = :student_id AND course_id = :course_id";
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) 
+            FROM enrollments 
+            WHERE student_id = :student_id 
+            AND course_id = :course_id 
+            AND status = 'active'
+        ");
 
-        try {
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':student_id', $studentId);
-            $stmt->bindParam(':course_id', $courseId);
-            $stmt->execute();
-            $result = $stmt->fetch();
-            return $result['count'] > 0;
-        } catch (PDOException $e) {
-            error_log("Error checking enrollment: " . $e->getMessage());
-            return false;
-        }
+        $stmt->execute([
+            ':student_id' => $studentId,
+            ':course_id' => $courseId
+        ]);
+
+        return $stmt->fetchColumn() > 0;
     }
 
     public function getStudentProgress($studentId, $courseId)
@@ -690,6 +690,283 @@ class Course
             $this->db->rollBack();
             error_log("Error adding bulk course tags: " . $e->getMessage());
             return false;
+        }
+    }
+
+    public function enrollStudent($studentId, $courseId)
+    {
+        try {
+            // Begin transaction
+            $this->db->beginTransaction();
+
+            // Log detailed enrollment attempt
+            error_log("Attempting to enroll Student ID: $studentId in Course ID: $courseId");
+
+            // Ensure student profile exists
+            $studentProfileStmt = $this->db->prepare("
+                INSERT IGNORE INTO students (user_id) 
+                VALUES (:student_id)
+            ");
+            $studentProfileStmt->execute([':student_id' => $studentId]);
+
+            // Insert enrollment
+            $enrollStmt = $this->db->prepare("
+                INSERT INTO enrollments (
+                    student_id, 
+                    course_id, 
+                    status, 
+                    progress, 
+                    enrolled_at
+                ) VALUES (
+                    :student_id, 
+                    :course_id, 
+                    'active', 
+                    0, 
+                    NOW()
+                )
+            ");
+
+            $enrollResult = $enrollStmt->execute([
+                ':student_id' => $studentId,
+                ':course_id' => $courseId
+            ]);
+
+            if (!$enrollResult) {
+                $errorInfo = $enrollStmt->errorInfo();
+                error_log("Enrollment Insert Failed");
+                error_log("Error Code: " . $errorInfo[0]);
+                error_log("Error Details: " . $errorInfo[2]);
+                throw new Exception("Failed to insert enrollment record");
+            }
+
+            // Commit transaction
+            $this->db->commit();
+            error_log("Enrollment Successful for Student ID: $studentId, Course ID: $courseId");
+
+            return true;
+        } catch (Exception $e) {
+            // Rollback transaction
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+
+            // Log comprehensive error details
+            error_log("Enrollment Failed");
+            error_log("Error Message: " . $e->getMessage());
+            error_log("Student ID: $studentId");
+            error_log("Course ID: $courseId");
+            error_log("Full Exception: " . print_r($e, true));
+
+            return false;
+        }
+    }
+
+    public function debugEnrollment($studentId, $courseId)
+    {
+        try {
+            // Check student exists
+            $studentStmt = $this->db->prepare("SELECT * FROM users WHERE id = :student_id");
+            $studentStmt->execute([':student_id' => $studentId]);
+            $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Check course exists
+            $courseStmt = $this->db->prepare("SELECT * FROM courses WHERE id = :course_id");
+            $courseStmt->execute([':course_id' => $courseId]);
+            $course = $courseStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Check existing enrollments
+            $enrollStmt = $this->db->prepare("
+                SELECT * FROM enrollments 
+                WHERE student_id = :student_id AND course_id = :course_id
+            ");
+            $enrollStmt->execute([
+                ':student_id' => $studentId,
+                ':course_id' => $courseId
+            ]);
+            $existingEnroll = $enrollStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Detailed logging
+            error_log("Enrollment Debug Information:");
+            error_log("Student Details: " . json_encode($student));
+            error_log("Course Details: " . json_encode($course));
+            error_log("Existing Enrollment: " . json_encode($existingEnroll));
+
+            return [
+                'student' => $student,
+                'course' => $course,
+                'existing_enrollment' => $existingEnroll
+            ];
+        } catch (Exception $e) {
+            error_log("Enrollment Debug Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function checkEnrollmentConditions($studentId, $courseId)
+    {
+        try {
+            // Log initial attempt
+            error_log("Checking Enrollment Conditions");
+            error_log("Student ID: $studentId");
+            error_log("Course ID: $courseId");
+
+            // Check if student ID is numeric and valid
+            if (!is_numeric($studentId) || $studentId <= 0) {
+                error_log("Invalid student ID: Not a positive number");
+                throw new Exception("Invalid student ID format");
+            }
+
+            // Check if course ID is numeric and valid
+            if (!is_numeric($courseId) || $courseId <= 0) {
+                error_log("Invalid course ID: Not a positive number");
+                throw new Exception("Invalid course ID format");
+            }
+
+            // Check student details with more comprehensive query
+            $studentQuery = "
+                SELECT 
+                    u.id, 
+                    u.role, 
+                    u.status, 
+                    u.first_name, 
+                    u.last_name, 
+                    u.email,
+                    (SELECT COUNT(*) FROM students WHERE user_id = u.id) as is_student_profile
+                FROM users u
+                WHERE u.id = :student_id
+            ";
+            $studentStmt = $this->db->prepare($studentQuery);
+            $studentStmt->execute([':student_id' => $studentId]);
+            $student = $studentStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Log student details
+            if (!$student) {
+                error_log("No user found with ID: $studentId");
+                throw new Exception("User not found");
+            }
+
+            error_log("Student Details: " . json_encode($student));
+
+            // Validate student
+            if ($student['role'] !== 'student') {
+                error_log("User is not a student: Role is " . $student['role']);
+                throw new Exception("User is not a student");
+            }
+
+            if ($student['status'] !== 'active') {
+                error_log("User account is not active: Status is " . $student['status']);
+                throw new Exception("User account is not active");
+            }
+
+            // Check student profile exists
+            if ($student['is_student_profile'] == 0) {
+                error_log("No student profile found for user");
+                throw new Exception("Student profile not completed");
+            }
+
+            // Check course details with subquery for student count
+            $courseQuery = "
+                SELECT 
+                    c.id, 
+                    c.status, 
+                    c.teacher_id, 
+                    (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as student_count, 
+                    c.price,
+                    c.title,
+                    u.first_name as teacher_first_name,
+                    u.last_name as teacher_last_name
+                FROM courses c
+                JOIN users u ON c.teacher_id = u.id
+                WHERE c.id = :course_id
+            ";
+            $courseStmt = $this->db->prepare($courseQuery);
+            $courseStmt->execute([':course_id' => $courseId]);
+            $course = $courseStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Log course details
+            if (!$course) {
+                error_log("No course found with ID: $courseId");
+                throw new Exception("Course not found");
+            }
+
+            error_log("Course Details: " . json_encode($course));
+
+            // Validate course
+            if ($course['status'] !== 'published') {
+                error_log("Course is not published: Status is " . $course['status']);
+                throw new Exception("Course is not available");
+            }
+
+            // Prevent enrolling in own course
+            if ($course['teacher_id'] == $studentId) {
+                error_log("Attempted to enroll in own course");
+                throw new Exception("Cannot enroll in your own course");
+            }
+
+            // Check existing enrollments
+            $enrollmentQuery = "
+                SELECT 
+                    id, 
+                    status, 
+                    enrolled_at, 
+                    progress
+                FROM enrollments 
+                WHERE student_id = :student_id AND course_id = :course_id
+            ";
+            $enrollmentStmt = $this->db->prepare($enrollmentQuery);
+            $enrollmentStmt->execute([
+                ':student_id' => $studentId,
+                ':course_id' => $courseId
+            ]);
+            $enrollment = $enrollmentStmt->fetch(PDO::FETCH_ASSOC);
+
+            // Log enrollment details
+            error_log("Existing Enrollment: " . json_encode($enrollment));
+
+            // If enrollment exists, throw an exception
+            if ($enrollment) {
+                error_log("Already enrolled in this course");
+                throw new Exception("Already enrolled in this course");
+            }
+
+            // Check student profile in students table
+            $studentProfileQuery = "
+                SELECT COUNT(*) as student_profile_count 
+                FROM students 
+                WHERE user_id = :student_id
+            ";
+            $studentProfileStmt = $this->db->prepare($studentProfileQuery);
+            $studentProfileStmt->execute([':student_id' => $studentId]);
+            $studentProfileResult = $studentProfileStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($studentProfileResult['student_profile_count'] == 0) {
+                error_log("No student profile found for user ID: $studentId");
+
+                // Optional: Automatically create a student profile
+                $createStudentProfileStmt = $this->db->prepare("
+                    INSERT INTO students (user_id) VALUES (:student_id)
+                ");
+                $createStudentProfileStmt->execute([':student_id' => $studentId]);
+
+                error_log("Created student profile for user ID: $studentId");
+            }
+
+            // Return comprehensive details
+            return [
+                'student' => $student,
+                'course' => $course,
+                'existing_enrollment' => $enrollment
+            ];
+        } catch (Exception $e) {
+            // Log comprehensive error details
+            error_log("Enrollment Conditions Check Failed");
+            error_log("Error Message: " . $e->getMessage());
+            error_log("Student ID: $studentId");
+            error_log("Course ID: $courseId");
+            error_log("Full Exception: " . print_r($e, true));
+
+            // Rethrow the exception to be caught in the calling method
+            throw $e;
         }
     }
 }

@@ -41,6 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    $preview_url = $_POST['preview_url'] ?? null;
+
     $courseData = [
         'teacher_id' => $_SESSION['user_id'],
         'category_id' => $_POST['category_id'],
@@ -50,7 +52,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'level' => $_POST['level'],
         'status' => 'draft',
         'thumbnail' => $thumbnailPath,
-        'content_paths' => json_encode($contentPaths)
+        'content_paths' => json_encode($contentPaths),
+        'preview_url' => $preview_url
     ];
 
     $courseId = $course->create($courseData);
@@ -174,6 +177,22 @@ require_once 'teachercourseHeader.php';
                                     </div>
                                 <?php endforeach; ?>
                             </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="preview_url" class="block text-gray-700 text-sm font-bold mb-2">
+                                Course Preview URL (Optional)
+                            </label>
+                            <input
+                                type="url"
+                                id="preview_url"
+                                name="preview_url"
+                                placeholder="Enter YouTube or Vimeo URL"
+                                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                                value="<?= htmlspecialchars($courseData['preview_url'] ?? '') ?>">
+                            <p class="text-gray-600 text-xs mt-1">
+                                Add a YouTube or Vimeo URL for a course preview video
+                            </p>
                         </div>
                     </div>
 

@@ -102,7 +102,7 @@ require_once 'teacherHeader.php';
                             <div class="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400">
                                 <div class="flex-shrink-0">
                                     <img class="h-10 w-10 rounded object-cover"
-                                        src="../admin/assets/images/uploads/courses/<?= $course['thumbnail'] ?: 'course-default.png' ?>"
+                                        src="../assets/images/uploads/courses/<?= $course['thumbnail'] ?: 'course-default.png' ?>"
                                         alt="<?= htmlspecialchars($course['title']) ?>">
                                 </div>
                                 <div class="flex-1 min-w-0">
