@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get all categories
 $categories = $category->getAll();
 
-require_once '../includes/header.php';
+require_once 'adminHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">

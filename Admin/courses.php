@@ -46,7 +46,7 @@ $totalCourses = $course->countAll($filters);
 $totalPages = ceil($totalCourses / $limit);
 $categories = $category->getAll();
 
-require_once '../includes/header.php';
+require_once 'adminHeader.php';
 ?>
 
 <!-- Add success/error messages -->

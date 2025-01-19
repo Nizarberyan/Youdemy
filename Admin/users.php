@@ -2,12 +2,13 @@
 session_start();
 require_once '../config/database.php';
 require_once '../classes/Auth.php';
-require_once '../classes/User.php';
+require_once '../classes/AdminUser.php';
 
+// Initialize Auth and check admin access
 $auth = new Auth();
 $auth->requireRole('admin');
 
-$user = new User();
+$user = new AdminUser();
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -43,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['error'] = 'Failed to suspend user';
                     }
                     break;
-                    
+
                 default:
                     $_SESSION['error'] = 'Invalid action';
             }
@@ -51,14 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['error'] = $e->getMessage();
         }
     }
-    
+
     header('Location: users.php');
     exit;
 }
 
 // Get filters and pagination parameters
-$role = $_GET['role'] ?? '';
-$status = $_GET['status'] ?? '';
+$role = $_GET['role'] ?? null;
+$status = $_GET['status'] ?? null;
 $page = max(1, intval($_GET['page'] ?? 1));
 $limit = 10;
 $offset = ($page - 1) * $limit;
@@ -68,7 +69,7 @@ $users = $user->getAll($role, $status, $limit, $offset) ?? [];
 $totalUsers = $user->countAll($role) ?? 0;
 $totalPages = ceil($totalUsers / $limit);
 
-require_once '../includes/header.php';
+require_once 'adminHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">
@@ -164,9 +165,9 @@ require_once '../includes/header.php';
                                                             <form method="POST" class="inline">
                                                                 <input type="hidden" name="action" value="approve">
                                                                 <input type="hidden" name="id" value="<?= $userData['id'] ?>">
-                                                                <button type="submit" 
+                                                                <button type="submit"
                                                                     onclick="return confirm('Are you sure you want to approve this user?')"
-                                                                    class="text-green-600 hover:text-green-900">
+                                                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm">
                                                                     Approve
                                                                 </button>
                                                             </form>
@@ -176,9 +177,9 @@ require_once '../includes/header.php';
                                                             <form method="POST" class="inline">
                                                                 <input type="hidden" name="action" value="suspend">
                                                                 <input type="hidden" name="id" value="<?= $userData['id'] ?>">
-                                                                <button type="submit" 
+                                                                <button type="submit"
                                                                     onclick="return confirm('Are you sure you want to suspend this user?')"
-                                                                    class="text-yellow-600 hover:text-yellow-900">
+                                                                    class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-md text-sm">
                                                                     Suspend
                                                                 </button>
                                                             </form>
@@ -188,9 +189,9 @@ require_once '../includes/header.php';
                                                             <form method="POST" class="inline">
                                                                 <input type="hidden" name="action" value="approve">
                                                                 <input type="hidden" name="id" value="<?= $userData['id'] ?>">
-                                                                <button type="submit" 
+                                                                <button type="submit"
                                                                     onclick="return confirm('Are you sure you want to reactivate this user?')"
-                                                                    class="text-green-600 hover:text-green-900">
+                                                                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-md text-sm">
                                                                     Reactivate
                                                                 </button>
                                                             </form>
@@ -199,9 +200,9 @@ require_once '../includes/header.php';
                                                         <form method="POST" class="inline">
                                                             <input type="hidden" name="action" value="delete">
                                                             <input type="hidden" name="id" value="<?= $userData['id'] ?>">
-                                                            <button type="submit" 
+                                                            <button type="submit"
                                                                 onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')"
-                                                                class="text-red-600 hover:text-red-900">
+                                                                class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded-md text-sm">
                                                                 Delete
                                                             </button>
                                                         </form>
@@ -265,21 +266,21 @@ require_once '../includes/header.php';
             formData.append('id', userId);
 
             fetch('users.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.error || 'Error performing action');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Network error occurred while performing action');
-            });
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert(data.error || 'Error performing action');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Network error occurred while performing action');
+                });
         }
     }
 

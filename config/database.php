@@ -36,8 +36,8 @@ class Database
     public function __wakeup() {}
 }
 
-// Database configuration
+
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'youdemy');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_USER', 'nizar');
+define('DB_PASS', 'nizar123');
