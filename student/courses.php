@@ -1,17 +1,20 @@
 <?php
-session_start();
 require_once '../config/database.php';
 require_once '../classes/Auth.php';
 require_once '../classes/Course.php';
-require_once '../classes/User.php';
+
+session_start();
+
+// Check if user is logged in and is a student
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'student') {
+    header('Location: ../login.php');
+    exit;
+}
 
 $auth = new Auth();
-$auth->requireRole('student');
-
-$user = new User();
 $course = new Course();
+$userData = $auth->getCurrentUser(); // Use this instead of User class
 
-$studentId = $_SESSION['user_id'];
 $status = $_GET['status'] ?? '';
 $search = $_GET['search'] ?? '';
 $page = $_GET['page'] ?? 1;
@@ -19,22 +22,22 @@ $limit = 10;
 $offset = ($page - 1) * $limit;
 
 $filters = [
-    'student_id' => $studentId,
+    'student_id' => $_SESSION['user_id'],
     'status' => $status,
     'search' => $search
 ];
 
-$enrolledCourses = $course->getEnrolledCourses($studentId, $filters, $limit, $offset);
-$totalCourses = $course->countEnrolledCourses($studentId, $filters);
+$enrolledCourses = $course->getEnrolledCourses($_SESSION['user_id'], $filters, $limit, $offset);
+$totalCourses = $course->countEnrolledCourses($_SESSION['user_id'], $filters);
 $totalPages = ceil($totalCourses / $limit);
 
 // Get progress for each course
 $progress = [];
 foreach ($enrolledCourses as $enrolledCourse) {
-    $progress[$enrolledCourse['id']] = $course->getStudentProgress($studentId, $enrolledCourse['id']);
+    $progress[$enrolledCourse['id']] = $course->getStudentProgress($_SESSION['user_id'], $enrolledCourse['id']);
 }
 
-require_once '../includes/header.php';
+require_once 'studentHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">
@@ -63,8 +66,14 @@ require_once '../includes/header.php';
 
             <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <?php foreach ($enrolledCourses as $course): ?>
-                    <div class="bg-white overflow-hidden shadow rounded-lg">
-                        <div class="relative pb-2/3">
+                    <div class="bg-white overflow-hidden shadow rounded-lg relative">
+                        <?php if ($course['is_completed']): ?>
+                            <div class="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                                <i class="fas fa-check-circle mr-1"></i> Completed
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="relative pb-48">
                             <img class="absolute h-full w-full object-cover"
                                 src="../<?= $course['thumbnail'] ?? 'assets/images/course-default.png' ?>"
                                 alt="<?= htmlspecialchars($course['title']) ?>">
@@ -80,35 +89,40 @@ require_once '../includes/header.php';
                                 <div class="relative pt-1">
                                     <div class="flex mb-2 items-center justify-between">
                                         <div>
-                                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 bg-indigo-200">
-                                                Progress
+                                            <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full <?= $course['is_completed'] ? 'text-green-600 bg-green-200' : 'text-indigo-600 bg-indigo-200' ?>">
+                                                <?= $course['is_completed'] ? 'Completed' : 'Progress' ?>
                                             </span>
                                         </div>
                                         <div class="text-right">
-                                            <span class="text-xs font-semibold inline-block text-indigo-600">
-                                                <?= $progress[$course['id']] ?>%
+                                            <span class="text-xs font-semibold inline-block <?= $course['is_completed'] ? 'text-green-600' : 'text-indigo-600' ?>">
+                                                <?= $course['enrollment_progress'] ?>%
                                             </span>
                                         </div>
                                     </div>
-                                    <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-indigo-200">
-                                        <div style="width:<?= $progress[$course['id']] ?>%"
-                                            class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-indigo-500">
+                                    <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
+                                        <div style="width:<?= $course['enrollment_progress'] ?>%"
+                                            class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center <?= $course['is_completed'] ? 'bg-green-500' : 'bg-indigo-500' ?>">
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="mt-4 flex justify-between items-center">
                                 <a href="../courses/learn.php?id=<?= $course['id'] ?>"
-                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
-                                    <?= $progress[$course['id']] === 100 ? 'Review Course' : 'Continue Learning' ?>
+                                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white <?= $course['is_completed'] ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700' ?>">
+                                    <?= $course['is_completed'] ? 'Review Course' : 'Continue Learning' ?>
                                 </a>
-                                <?php if ($progress[$course['id']] === 100): ?>
+                                <?php if ($course['is_completed']): ?>
                                     <a href="certificates.php?course_id=<?= $course['id'] ?>"
-                                        class="text-indigo-600 hover:text-indigo-900">
-                                        <i class="fas fa-certificate"></i> Certificate
+                                        class="text-green-600 hover:text-green-900">
+                                        <i class="fas fa-certificate mr-1"></i>View Certificate
                                     </a>
                                 <?php endif; ?>
                             </div>
+                            <?php if ($course['completed_at']): ?>
+                                <p class="mt-2 text-xs text-gray-500">
+                                    Completed on <?= date('M j, Y', strtotime($course['completed_at'])) ?>
+                                </p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endforeach; ?>

@@ -1,14 +1,19 @@
 <?php
 require_once '../config/database.php';
 require_once '../classes/Auth.php';
-require_once '../classes/User.php';
+
+session_start();
+
+// Check if user is logged in and is a student
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'student') {
+    header('Location: ../login.php');
+    exit;
+}
 
 $auth = new Auth();
-$auth->requireRole('student');
+$userData = $auth->getCurrentUser(); // This now returns an array
 
-$user = new User();
-$userId = $_SESSION['user_id'];
-$userData = $user->getById($userId);
+$auth->requireRole('student');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $uploadDir = '../assets/images/uploads/profiles/';
@@ -46,16 +51,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!isset($error)) {
-        if ($user->update($userId, $updateData)) {
-            $success = "Profile updated successfully";
-            $userData = $user->getById($userId);
-        } else {
+        try {
+            $db = Database::getInstance()->getConnection();
+            $query = "UPDATE users SET ";
+            $params = [];
+
+            foreach ($updateData as $key => $value) {
+                if ($value !== null) {
+                    $query .= "$key = :$key, ";
+                    $params[":$key"] = $value;
+                }
+            }
+
+            $query = rtrim($query, ", ");
+            $query .= " WHERE id = :user_id";
+            $params[':user_id'] = $_SESSION['user_id'];
+
+            $stmt = $db->prepare($query);
+            if ($stmt->execute($params)) {
+                $success = "Profile updated successfully";
+                $userData = $auth->getCurrentUser();
+            } else {
+                $error = "Error updating profile";
+            }
+        } catch (PDOException $e) {
             $error = "Error updating profile";
+            error_log($e->getMessage());
         }
     }
 }
 
-require_once '../includes/header.php';
+require_once 'studentHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">

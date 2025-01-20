@@ -365,20 +365,26 @@ class Course
 
     public function isStudentEnrolled($studentId, $courseId)
     {
-        $stmt = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM enrollments 
-            WHERE student_id = :student_id 
-            AND course_id = :course_id 
-            AND status = 'active'
-        ");
+        try {
+            $stmt = $this->db->prepare("
+                SELECT COUNT(*) 
+                FROM enrollments 
+                WHERE student_id = :student_id 
+                AND course_id = :course_id
+            ");
 
-        $stmt->execute([
-            ':student_id' => $studentId,
-            ':course_id' => $courseId
-        ]);
+            $stmt->execute([
+                ':student_id' => $studentId,
+                ':course_id' => $courseId
+            ]);
 
-        return $stmt->fetchColumn() > 0;
+            $count = $stmt->fetchColumn();
+            error_log("Enrollment check - Student: $studentId, Course: $courseId, Result: $count");
+            return $count > 0;
+        } catch (PDOException $e) {
+            error_log("Error checking enrollment: " . $e->getMessage());
+            return false;
+        }
     }
 
     public function getStudentProgress($studentId, $courseId)
@@ -481,36 +487,30 @@ class Course
 
     public function countEnrolledCourses($studentId, $filters = [])
     {
-        $query = "SELECT COUNT(DISTINCT c.id) as total
-                  FROM courses c
-                  JOIN enrollments e ON c.id = e.course_id
-                  WHERE e.student_id = :student_id";
-
-        $params = [':student_id' => $studentId];
-
-        if (!empty($filters['search'])) {
-            $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
-            $params[':search'] = "%{$filters['search']}%";
-        }
-
-        if (!empty($filters['status'])) {
-            if ($filters['status'] === 'completed') {
-                $query .= " AND (SELECT COUNT(*) FROM lesson_progress lp 
-                           JOIN course_lessons cl ON lp.lesson_id = cl.id 
-                           WHERE cl.course_id = c.id AND lp.student_id = :student_id2 
-                           AND lp.completed = 1) = 
-                           (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id)";
-                $params[':student_id2'] = $studentId;
-            }
-        }
-
         try {
-            $stmt = $this->db->prepare($query);
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
+            $query = "
+                SELECT COUNT(*) as total
+                FROM enrollments e
+                JOIN courses c ON e.course_id = c.id
+                WHERE e.student_id = :student_id
+            ";
+
+            $params = [':student_id' => $studentId];
+
+            if (!empty($filters['status'])) {
+                $query .= " AND e.status = :status";
+                $params[':status'] = $filters['status'];
             }
-            $stmt->execute();
-            return $stmt->fetch()['total'];
+
+            if (!empty($filters['search'])) {
+                $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
+                $params[':search'] = "%{$filters['search']}%";
+            }
+
+            $stmt = $this->db->prepare($query);
+            $stmt->execute($params);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int)$result['total'];
         } catch (PDOException $e) {
             error_log("Error counting enrolled courses: " . $e->getMessage());
             return 0;
@@ -519,55 +519,64 @@ class Course
 
     public function getEnrolledCourses($studentId, $filters = [], $limit = null, $offset = null)
     {
-        $query = "SELECT DISTINCT c.*, u.first_name, u.last_name,
-                  CONCAT(u.first_name, ' ', u.last_name) as teacher_name
-                  FROM courses c
-                  JOIN enrollments e ON c.id = e.course_id
-                  JOIN users u ON c.teacher_id = u.id
-                  WHERE e.student_id = :student_id";
-
-        $params = [':student_id' => $studentId];
-
-        if (!empty($filters['search'])) {
-            $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
-            $params[':search'] = "%{$filters['search']}%";
-        }
-
-        if (!empty($filters['status'])) {
-            if ($filters['status'] === 'completed') {
-                $query .= " AND (SELECT COUNT(*) FROM lesson_progress lp 
-                           JOIN course_lessons cl ON lp.lesson_id = cl.id 
-                           WHERE cl.course_id = c.id AND lp.student_id = :student_id2 
-                           AND lp.completed = 1) = 
-                           (SELECT COUNT(*) FROM course_lessons WHERE course_id = c.id)";
-                $params[':student_id2'] = $studentId;
-            }
-        }
-
-        $query .= " ORDER BY e.enrolled_at DESC";
-
-        if ($limit !== null) {
-            $query .= " LIMIT :limit";
-            if ($offset !== null) {
-                $query .= " OFFSET :offset";
-            }
-        }
-
         try {
-            $stmt = $this->db->prepare($query);
-            foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
+            $query = "
+                SELECT c.*, 
+                       u.first_name as teacher_first_name, 
+                       u.last_name as teacher_last_name,
+                       CONCAT(u.first_name, ' ', u.last_name) as teacher_name,
+                       e.status as enrollment_status,
+                       e.progress as enrollment_progress,
+                       e.completed_at,
+                       CASE 
+                           WHEN e.status = 'completed' THEN true 
+                           ELSE false 
+                       END as is_completed
+                FROM enrollments e
+                JOIN courses c ON e.course_id = c.id
+                JOIN users u ON c.teacher_id = u.id
+                WHERE e.student_id = :student_id
+            ";
+
+            $params = [':student_id' => $studentId];
+
+            if (!empty($filters['status'])) {
+                $query .= " AND e.status = :status";
+                $params[':status'] = $filters['status'];
             }
+
+            if (!empty($filters['search'])) {
+                $query .= " AND (c.title LIKE :search OR c.description LIKE :search)";
+                $params[':search'] = "%{$filters['search']}%";
+            }
+
+            $query .= " ORDER BY e.enrolled_at DESC";
+
             if ($limit !== null) {
-                $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+                $query .= " LIMIT :limit";
                 if ($offset !== null) {
-                    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+                    $query .= " OFFSET :offset";
                 }
             }
+
+            $stmt = $this->db->prepare($query);
+
+            // Bind parameters
+            foreach ($params as $key => &$value) {
+                $stmt->bindParam($key, $value);
+            }
+
+            if ($limit !== null) {
+                $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+                if ($offset !== null) {
+                    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+                }
+            }
+
             $stmt->execute();
-            return $stmt->fetchAll();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("Error getting enrolled courses: " . $e->getMessage());
+            error_log("Error fetching enrolled courses: " . $e->getMessage());
             return [];
         }
     }

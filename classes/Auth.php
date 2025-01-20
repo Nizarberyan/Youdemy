@@ -138,6 +138,21 @@ class Auth
             return null;
         }
 
-        return User::createUser($_SESSION['role'], $_SESSION['user_id']);
+        return $this->getUserById($_SESSION['user_id']);
+    }
+
+    public function getUserById($userId)
+    {
+        try {
+            $stmt = $this->db->prepare("
+                SELECT * FROM users 
+                WHERE id = :id
+            ");
+            $stmt->execute([':id' => $userId]);
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log("Error getting user: " . $e->getMessage());
+            return false;
+        }
     }
 }

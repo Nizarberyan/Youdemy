@@ -69,7 +69,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                                 aria-expanded="false"
                                 aria-haspopup="true">
                                 <img class="h-8 w-8 rounded-full object-cover"
-                                    src="../<?= $_SESSION['user_profile_image'] ?? 'assets/images/default-avatar.png' ?>"
+                                    src="../<?= $_SESSION['user_profile_image'] ?? '../assets/images/uploads/profiles/default-avatar.png' ?>"
                                     alt="Admin profile">
                             </button>
                             <div id="user-dropdown"
@@ -129,7 +129,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <div class="flex items-center px-5">
                     <div class="flex-shrink-0">
                         <img class="h-10 w-10 rounded-full object-cover"
-                            src="../<?= $_SESSION['user_profile_image'] ?? 'assets/images/default-avatar.png' ?>"
+                            src="../<?= $_SESSION['user_profile_image'] ?? '../assets/images/uploads/profiles/default-avatar.png' ?>"
                             alt="Admin profile">
                     </div>
                     <div class="ml-3">

@@ -49,7 +49,7 @@ $categories = $category->getAll();
 require_once 'adminHeader.php';
 ?>
 
-<!-- Add success/error messages -->
+
 <?php if (isset($_SESSION['success'])): ?>
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
         <?= $_SESSION['success'] ?>
@@ -96,7 +96,7 @@ require_once 'adminHeader.php';
                                     <div class="flex items-center">
                                         <div class="h-10 w-10 flex-shrink-0">
                                             <img class="h-10 w-10 rounded object-cover"
-                                                src="../<?= $course['thumbnail'] ?? 'assets/images/course-default.png' ?>"
+                                                src="../assets/images/uploads/courses/<?= $course['thumbnail'] ?? '../assets/images/uploads/courses/course-default.png' ?>"
                                                 alt="">
                                         </div>
                                         <div class="ml-4">

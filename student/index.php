@@ -20,7 +20,7 @@ foreach ($enrolledCourses as $enrolledCourse) {
     $progress[$enrolledCourse['id']] = $course->getStudentProgress($studentId, $enrolledCourse['id']);
 }
 
-require_once '../includes/header.php';
+require_once 'studentHeader.php';
 ?>
 
 <div class="min-h-screen bg-gray-100">
