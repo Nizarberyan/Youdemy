@@ -4,9 +4,7 @@ require_once 'User.php';
 
 class AdminUser extends User
 {
-    // Implement any required abstract methods from User class
-    // Add admin-specific functionality
-
+    
     public function countAll($role = null)
     {
         $sql = "SELECT COUNT(*) as count FROM users";
